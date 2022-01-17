@@ -1,0 +1,25 @@
+{
+    "compilerOptions": {
+        "target": "ES2021",
+        "module": "commonjs",
+        "allowJs": false,
+        "declaration": true,
+        "sourceMap": false,
+        "moduleResolution": "node",
+        "strict": true,
+        "noImplicitAny": true,
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
+        "allowSyntheticDefaultImports": true,
+        "resolveJsonModule": true,
+		"outDir": "./build",
+		"rootDir": "./src",
+		"baseUrl": "./src"
+    },
+	"include": [
+		"src/**/*.ts"
+	],
+	"exclude": [
+		"node_modules/**"
+	]
+}
