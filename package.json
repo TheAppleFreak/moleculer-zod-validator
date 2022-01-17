@@ -1,6 +1,6 @@
 {
   "name": "moleculer-zod-validator",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A validator for the Moleculer microservice framework to allow the use of Zod.",
   "author": "TheAppleFreak <TheAppleFreak@gmail.com>",
   "main": "build/index.js",
@@ -24,7 +24,7 @@
     "typescript"
   ],
   "files": [
-    "build/*",
+    "build/",
     "CHANGELOG.md"
   ],
   "license": "MIT",
