@@ -2,6 +2,9 @@
 
 Validate Moleculer action parameters using the [Zod](https://github.com/colinhacks/zod) validator. 
 
+![Continuous Integration](https://github.com/TheAppleFreak/moleculer-zod-validator/actions/workflows/tests.yml/badge.svg) [![npm version](https://badge.fury.io/js/moleculer-zod-validator.svg)](https://www.npmjs.com/package/moleculer-zod-validator) [![downloads](https://img.shields.io/npm/dw/moleculer-zod-validator)]((https://www.npmjs.com/package/moleculer-zod-validator))
+
+
 ## Supports
 
 * Supports [Moleculer](https://moleculer.services) v0.14.x
