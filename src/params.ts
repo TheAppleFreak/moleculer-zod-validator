@@ -17,10 +17,8 @@ export class ZodParams<Schema extends z.ZodRawShape> {
                 deepPartial: false,
                 strict: false,
                 catchall: undefined,
-                compiledValidatorOnly: {
-                    strip: false,
-                    passthrough: false,
-                },
+                strip: false,
+                passthrough: false,
             } as z.infer<typeof ZodParamsOptions>,
             options,
         );
@@ -28,9 +26,9 @@ export class ZodParams<Schema extends z.ZodRawShape> {
         const opts = ZodParamsOptions.parse(options);
         let validator;
 
-        if (opts.compiledValidatorOnly!.strip) {
+        if (opts.strip) {
             validator = z.object(this._rawSchema).strip();
-        } else if (opts.compiledValidatorOnly!.passthrough) {
+        } else if (opts.passthrough) {
             validator = z.object(this._rawSchema).passthrough();
         } else if (opts.strict) {
             validator = z.object(this._rawSchema).strict();
@@ -78,10 +76,8 @@ const ZodParamsOptions = z
         deepPartial: z.boolean(),
         strict: z.boolean(),
         catchall: z.any(),
-        compiledValidatorOnly: z.object({
-            passthrough: z.boolean(),
-            strip: z.boolean(),
-        }),
+        passthrough: z.boolean(),
+        strip: z.boolean(),
     })
     .deepPartial();
 

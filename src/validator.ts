@@ -1,7 +1,9 @@
 import { z } from "zod";
 import { Errors, Validators } from "moleculer";
 
-import type { ZodParamsOptionsType } from ".";
+import type { ZodParamsOptionsType } from "./params";
+
+import { mutateObject } from "./helpers";
 
 export class ZodValidator extends Validators.Base {
     constructor() {
@@ -21,8 +23,6 @@ export class ZodValidator extends Validators.Base {
 
             let compiled;
 
-            // Uncomment when I figure out how to apply transformations from the validator
-            /*
             if (opts.strip) {
                 compiled = z.object(schema).strip();
             } else if (opts.strict) {
@@ -30,13 +30,7 @@ export class ZodValidator extends Validators.Base {
             } else if (opts.passthrough) {
                 compiled = z.object(schema).passthrough();
             } else {
-                compiled = z.object(schema);
-            }
-            */
-            if (opts.strict) {
-                compiled = z.object(schema).strict();
-            } else {
-                compiled = z.object(schema);
+                compiled = z.object(schema).strip();
             }
             if (opts.partial) {
                 compiled = compiled.partial();
@@ -48,7 +42,13 @@ export class ZodValidator extends Validators.Base {
                 compiled = compiled.catchall(opts.catchall);
             }
 
-            compiled.parse(params);
+            const results = compiled.parse(params);
+
+            // params is passed by reference, meaning that we can apply transformations
+            // to what gets passed to the validator from here. However, simply setting
+            // it to a new value will just change the pointer to the object in function
+            // scope, so we need to actually mutate the original ourselves.
+            mutateObject(params, results, false);
 
             return true;
         } catch (err) {
