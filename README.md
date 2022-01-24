@@ -38,19 +38,18 @@ const broker = new ServiceBroker({
 
 One of Zod's main features is how it can infer TypeScript types from a schema. To simplify the usage of this, there is a convenience utility called `ZodParams` that allows for easy access to the necessary data.
 
-The `ZodParams` constructor takes one to two arguments, `schema` and optionally `options`. 
+The `ZodParams` constructor takes one or two arguments, `schema` and optionally `options`. 
 
-* `schema` - This is a schema object that gets passed directly into `z.object`. [For all available schema options, please look at the Zod documentation.](https://github.com/colinhacks/zod#defining-schemas) Please note that transformation options (such as `default`) are currently unavailable in the main validator; please read the below note for more information.
-* `options` - This provides access to some of the different functions available on a standard Zod object. All booleans default to `false`.
+* `schema` - This is a schema object that gets passed directly into `z.object`. [For all available schema options, please look at the Zod documentation.](https://github.com/colinhacks/zod#defining-schemas)
+* `options` - This provides access to some of the different functions available on a standard Zod object. All booleans default to `false` except for `strip`, which is implicitly set to `true`.
   * `partial` (boolean) - Shallowly makes all properties optional. ([docs](https://github.com/colinhacks/zod#partial))
   * `deepPartial` (boolean) - Deeply makes all properties optional. ([docs](https://github.com/colinhacks/zod#deepPartial))
-  * `strict` (boolean) - Throws an error if unrecognized keys are present. ([docs](https://github.com/colinhacks/zod#strict))
-  * `catchall` (Zod validator) - Validates all unknown keys against this schema. Obviates `strict`. ([docs](https://github.com/colinhacks/zod#catchall))
-  * `compiledValidatorOnly` - This provides access to settings that transform the inputs that is currently not supported natively in the validator itself. Please read the note below for more information on this.
-    * `passthrough` (boolean) - Passes through unrecognized keys. Equivalent to the current default behavior in this validator.
-    * `strip` (boolean) - Removes unrecognized keys from the parsed input. Equivalent to Zod's default behavior.
+  * `strip` (boolean) - Removes unrecognized keys from the parsed input. This is Zod's default behavior and this validator's default behavior. Mutually exclusive with `passthrough` and `strict`, and will override them if set. ([docs](https://github.com/colinhacks/zod#strip))
+  * `strict` (boolean) - Throws an error if unrecognized keys are present. Mutually exclusive with `passthrough` and `strip`. ([docs](https://github.com/colinhacks/zod#strict))
+  * `passthrough` (boolean) - Passes through unrecognized keys. Mutually exclusive with `strict` and `strip`. ([docs](https://github.com/colinhacks/zod#passthrough))
+  * `catchall` (Zod validator) - Validates all unknown keys against this schema. Obviates `strict`, `passthrough`, and `strip`. ([docs](https://github.com/colinhacks/zod#catchall))
 
-**Important note**: As of this writing (v1.0.0), there is currently no support for transformation options (`strip`, `passthrough`, and `default` primarily), meaning that this validator only checks to see whether the shape of the incoming data is valid and then sends it to the action as received. I'm not sure how the default implementation of fastest-validator performs its transformations; this section will be updated if and when that support can be added. For transformation options in the interim, you can access the compiled validator within the action and run `ctx.params` through it again to properly transform the input. There will be a major version update (currently v2.0.0) once it is added.
+As of v2.0.0, support for object transformations is present, allowing for the use of features such as [preprocessing](https://github.com/colinhacks/zod#preprocess), [refinements](https://github.com/colinhacks/zod#refine), [transforms](https://github.com/colinhacks/zod#transform), and [defaults](https://github.com/colinhacks/zod#default). 
 
 Once constructed, there are four properties exposed on the `ZodParams` object.
 
@@ -95,6 +94,19 @@ broker.createService({
 
 ...
 
-broker.call<returnType, typeof simpleValidator.call>({ string: "yes", number: 42 }); // calls successfully
-broker.call<returnType, typeof complexValidator.call>({ object: { nestedString: "not optional", nestedBoolean: false }, unrecognizedKey: 69 }); // throws ValidationError
+broker.call<
+    ReturnType, 
+    typeof simpleValidator.call
+>({ string: "yes", number: 42 }); // calls successfully
+
+broker.call<
+    ReturnType, 
+    typeof complexValidator.call
+>({
+    object: { 
+        nestedString: "not optional", 
+        nestedBoolean: false 
+    }, 
+    unrecognizedKey: 69 
+}); // throws ValidationError
 ```

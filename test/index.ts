@@ -1,5 +1,5 @@
 import { ServiceBroker, Context, Errors } from "moleculer";
-import { ZodParams, ZodValidator } from ".";
+import { ZodParams, ZodValidator } from "../src";
 import { z } from "zod";
 
 let broker: ServiceBroker;
@@ -51,6 +51,24 @@ const strictParams = new ZodParams(
         strict: true,
     },
 );
+const passthroughParams = new ZodParams(
+    {
+        stringProp: z.string(),
+    },
+    {
+        passthrough: true,
+    },
+);
+const stripParams = new ZodParams(
+    {
+        stringProp: z.string(),
+    },
+    {
+        passthrough: true,
+        strip: true, // should override passthrough
+    },
+);
+
 const catchallParams = new ZodParams(
     {
         stringProp: z.string(),
@@ -115,6 +133,18 @@ beforeAll(() => {
             strictParams: {
                 params: strictParams.schema,
                 async handler(ctx: Context<typeof strictParams.context>) {
+                    return ctx.params;
+                },
+            },
+            passthroughParams: {
+                params: passthroughParams.schema,
+                async handler(ctx: Context<typeof passthroughParams.context>) {
+                    return ctx.params;
+                },
+            },
+            stripParams: {
+                params: stripParams.schema,
+                async handler(ctx: Context<typeof stripParams.context>) {
                     return ctx.params;
                 },
             },
@@ -248,7 +278,7 @@ describe("unrecognized parameters", () => {
         expect(data).toBeUndefined();
     });
 
-    test("calling oneParam with unrecognized parameters (equivalent to passthrough() from Zod)", async () => {
+    test("calling oneParam with unrecognized parameters (equivalent to strip: true)", async () => {
         const data = await broker.call<
             typeof oneParam.context,
             typeof oneParam.call
@@ -258,7 +288,33 @@ describe("unrecognized parameters", () => {
             unrecognizedParam: null,
         });
 
+        expect(data).toEqual({ stringProp: "yes" });
+    });
+
+    test("calling passthroughParams with unrecognized parameters", async () => {
+        const data = await broker.call<
+            typeof passthroughParams.context,
+            typeof passthroughParams.call
+        >("test.passthroughParams", {
+            stringProp: "yes",
+            // @ts-ignore
+            unrecognizedParam: null,
+        });
+
         expect(data).toEqual({ stringProp: "yes", unrecognizedParam: null });
+    });
+
+    test("calling stripParams with unrecognized parameters", async () => {
+        const data = await broker.call<
+            typeof stripParams.context,
+            typeof stripParams.call
+        >("test.stripParams", {
+            stringProp: "yes",
+            // @ts-ignore
+            unrecognizedParam: null,
+        });
+
+        expect(data).toEqual({ stringProp: "yes" });
     });
 
     test("unrecognized parameters with strict: true", async () => {
