@@ -1,11 +1,11 @@
 import { z } from "zod";
 
-export class ZodParams<Schema extends z.ZodRawShape> {
+export class ZodParams<Schema extends Parameters<(typeof z)["object"]>[0]> {
     private _rawSchema: Schema;
     private _rawSchemaWithOptions!: Schema & {
         $$$options: z.infer<typeof ZodParamsOptions>;
     };
-    private _validator;
+    public readonly _validator;
 
     constructor(schema: Schema, options?: z.infer<typeof ZodParamsOptions>) {
         this._rawSchema = schema;
@@ -18,14 +18,17 @@ export class ZodParams<Schema extends z.ZodRawShape> {
                 strict: false,
                 catchall: undefined,
                 strip: false,
-                passthrough: false,
+                passthrough: false
             } as z.infer<typeof ZodParamsOptions>,
-            options,
+            options
         );
 
         const opts = ZodParamsOptions.parse(options);
         let validator;
 
+        // So, there's a bug in my code where the types for all of these options
+        // are generated regardless of the options chosen. I'm not sure how to address
+        // this, unfortunately. TODO: Figure this out later
         if (opts.strip) {
             validator = z.object(this._rawSchema).strip();
         } else if (opts.passthrough) {
@@ -49,7 +52,7 @@ export class ZodParams<Schema extends z.ZodRawShape> {
         this._validator = validator;
 
         this._rawSchemaWithOptions = Object.assign({}, schema, {
-            $$$options: opts,
+            $$$options: opts
         });
     }
 
@@ -77,7 +80,7 @@ const ZodParamsOptions = z
         strict: z.boolean(),
         catchall: z.any(),
         passthrough: z.boolean(),
-        strip: z.boolean(),
+        strip: z.boolean()
     })
     .deepPartial();
 

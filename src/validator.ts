@@ -1,23 +1,53 @@
 import { z } from "zod";
 import { Errors, Validators } from "moleculer";
+import { cloneDeep } from "lodash";
+
+// Why does this work when an import doesn't???
+const FastestValidator = require("fastest-validator");
 
 import type { ZodParamsOptionsType } from "./params";
 
 import { mutateObject } from "./helpers";
 
 export class ZodValidator extends Validators.Base {
+    public fvFallback;
+
     constructor() {
         super();
+
+        this.fvFallback = new FastestValidator();
     }
 
     compile(schema: ZodSchemaWithOptions) {
+        // There's an issue in Moleculer 0.14.x where the internal services like
+        // $node.services use fastest-validator configuration and can't be changed.
+        // Since the schema used for this validator is an object with all functions
+        // (vs an object with strings/numbers/booleans) we can check for the existence
+        // of function properties on the top level (ignoring $$$options)
+        // Not super elegant, but hey, if it keeps Moleculer from crashing...
+        // ¯\_(ツ)_/¯
+        // if (
+        //     Object.keys(schema)
+        //         .map((key) => typeof schema[key])
+        //         .includes("function")
+        // ) {
         return (params: unknown) => this.validate(params, schema);
+        // } else {
+        //     // This is based on Moleculer's fastest.js validator
+        //     return this.fvFallback.compile(cloneDeep(schema));
+        // }
     }
 
-    validate(
-        params: unknown,
-        schemaWithOptions: ZodSchemaWithOptions,
-    ): boolean {
+    validate(params: unknown, schemaWithOptions: ZodSchemaWithOptions): boolean {
+        // Since we have to worry about the fastest-validator fallback, check the
+        // schema type and go back to the fallback depending on that. Same check
+        // as in compile().
+        // if (
+        //     Object.keys(schemaWithOptions)
+        //         .filter((key) => key !== "$$$options")
+        //         .map((key) => typeof schemaWithOptions[key])
+        //         .includes("function")
+        // ) {
         try {
             const { $$$options: opts, ...schema } = schemaWithOptions;
 
@@ -56,14 +86,25 @@ export class ZodValidator extends Validators.Base {
                 throw new Errors.ValidationError(
                     "Parameter validation error",
                     "VALIDATION_ERROR",
-                    err.issues,
+                    err.issues
                 );
 
             throw err;
         }
+        // } else {
+        //     const res = this.fvFallback.validate(params, cloneDeep(schemaWithOptions));
+        //     if (res !== true)
+        //         throw new Errors.ValidationError(
+        //             "Parameters validation error!",
+        //             "VALIDATION_ERROR",
+        //             res
+        //         );
+
+        //     return true;
+        // }
     }
 }
 
-type ZodSchemaWithOptions = z.ZodRawShape & {
+type ZodSchemaWithOptions = Parameters<(typeof z)["object"]>[0] & {
     $$$options: ZodParamsOptionsType;
 };
