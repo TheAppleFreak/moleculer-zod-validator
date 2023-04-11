@@ -334,9 +334,15 @@ describe("unrecognized parameters", () => {
 });
 
 describe("calling internal services", () => {
-    test("calling $node.services (fastest-validator schema) doesn't crash", async () => {
-        expect(async () => {
-            await broker.call("$node.services");
-        }).resolves.toBeTruthy();
+    test("calling $node.services (fastest-validator schema) doesn't crash everything", async () => {
+        const res = await broker.call("$node.services");
+
+        expect(res).toBeTruthy();
+    });
+
+    test("calling $node.actions (fastest-validator schema) doesn't crash everything", async () => {
+        const res = await broker.call("$node.actions");
+
+        expect(res).toBeTruthy();
     });
 });

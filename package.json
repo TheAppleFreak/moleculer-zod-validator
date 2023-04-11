@@ -47,7 +47,6 @@
     "zod": "^3.21.4"
   },
   "peerDependencies": {
-    "fastest-validator": "^1.x.x",
     "lodash": "^4.17.21",
     "moleculer": "0.14.x",
     "zod": "3.x.x"
