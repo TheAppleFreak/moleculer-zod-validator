@@ -60,7 +60,7 @@ Additionally, support for object transformations is present, allowing for the us
 Once constructed, there are four properties exposed on the `ZodParams` object.
 
 * `schema` - The raw schema passed in. This should be passed to the `params` object in the action definition.
-* `context` - The inferred output type from the compiled validator. This should be used within the `Context` object in Moleculer to get the proper types after the parameters have passed through validation. 
+* `context` - The inferred output type from the compiled validator. This should be used within the `Context` object in the action definition to get the proper types after the parameters have passed through validation. 
 * `call` - The inferred input type from the compiled validator. This should be used with `broker.call` or `ctx.call` as the second type parameter to get proper types for the action call. 
 * `validator` - The compiled validator. 
 
