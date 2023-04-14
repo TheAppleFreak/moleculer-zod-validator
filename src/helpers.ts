@@ -9,7 +9,7 @@
 export function mutateObject(
     destination: any,
     source: any,
-    preserveRootProps: boolean = false,
+    preserveRootProps: boolean = false
 ): void {
     if (isEnumerable(source)) {
         const isSrcArray = Array.isArray(source);
@@ -35,11 +35,7 @@ export function mutateObject(
         } else {
             for (let i in source) {
                 if (source.hasOwnProperty(i)) {
-                    destination[i] = mutateObject(
-                        destination[i],
-                        source[i],
-                        false,
-                    );
+                    destination[i] = mutateObject(destination[i], source[i], false);
                 }
             }
         }

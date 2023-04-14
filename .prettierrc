@@ -1,7 +1,9 @@
 {
-    "trailingComma": "all",
+    "$schema": "http://json.schemastore.org/prettierrc",
+    "trailingComma": "none",
     "tabWidth": 4,
     "semi": true,
     "singleQuote": false,
-    "bracketSpacing": true
+    "bracketSpacing": true,
+    "printWidth": 88
 }
