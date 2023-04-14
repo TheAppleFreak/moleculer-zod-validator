@@ -1,6 +1,6 @@
 {
   "name": "moleculer-zod-validator",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "A validator for the Moleculer microservice framework to allow the use of Zod.",
   "author": "TheAppleFreak <TheAppleFreak@gmail.com>",
   "main": "build/index.js",
@@ -16,6 +16,9 @@
     "type": "git",
     "url": "git+https://github.com/TheAppleFreak/moleculer-zod-validator.git"
   },
+  "engines": {
+    "node": ">=17.0.0"
+  },
   "keywords": [
     "moleculer",
     "zod",
@@ -25,7 +28,9 @@
   ],
   "files": [
     "build/**/*",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "README.md",
+    "LICENSE"
   ],
   "license": "MIT",
   "bugs": {
@@ -34,20 +39,18 @@
   "homepage": "https://github.com/TheAppleFreak/moleculer-zod-validator#readme",
   "devDependencies": {
     "@types/jest": "^29.5.0",
-    "@types/lodash": "^4.14.192",
     "@types/node": "^18.15.11",
     "fastest-validator": "^1.16.0",
     "husky": "^8.0.3",
     "jest": "^29.5.0",
     "moleculer": "^0.14.29",
     "prettier": "^2.8.7",
-    "rimraf": "^4.4.1",
+    "rimraf": "^5.0.0",
     "ts-jest": "^29.1.0",
     "typescript": "^5.0.4",
     "zod": "^3.21.4"
   },
   "peerDependencies": {
-    "lodash": "^4.17.21",
     "moleculer": "0.14.x",
     "zod": "3.x.x"
   }

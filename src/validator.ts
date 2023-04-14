@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { Errors, Validators } from "moleculer";
-import _ from "lodash";
 
 // Why does this work when an import doesn't???
 const FastestValidator = require("fastest-validator");
@@ -35,7 +34,8 @@ export class ZodValidator extends Validators.Base {
         } else {
             // This is based on Moleculer's fastest.js validator
             // TODO: Why does this crash with cloneDeep?
-            return this.fvFallback.compile(_.cloneDeep(schema));
+            // return this.fvFallback.compile(_.cloneDeep(schema));
+            return this.fvFallback.compile(structuredClone(schema));
         }
     }
 
@@ -94,7 +94,7 @@ export class ZodValidator extends Validators.Base {
         } else {
             const res = this.fvFallback.validate(
                 params,
-                _.cloneDeep(schemaWithOptions)
+                structuredClone(schemaWithOptions)
             );
             if (res !== true)
                 throw new Errors.ValidationError(
