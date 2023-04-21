@@ -26,21 +26,34 @@ export class ZodParams<
 
     // These types are used purely to assist in type inference within this class
     /** This property is purely for type inference and should not be used. */
-    public _mode!: ZodParamsOptionsMode<ZPOptions>;
+    public _mode!: ZPOptions["strip"] extends true
+        ? "strip"
+        : ZPOptions["strict"] extends true
+        ? "strict"
+        : ZPOptions["passthrough"] extends true
+        ? "passthrough"
+        : "strip";
     /** This property is purely for type inference and should not be used. */
     public _processedSchema!: ZPOptions["partial"] extends true
-    ? ZodParamsMakeOptionalSchema<ZPSchema>
-    : ZPOptions["deepPartial"] extends true
-    ? {
-        [K in keyof ZPSchema]: ZPSchema[K] extends ZodOptional<ZPSchema[K]>
-        ? ZodDeepPartial<ZPSchema[K]>
-        : ZodOptional<ZodDeepPartial<ZPSchema[K]>>;
-    }
-    : ZPSchema;
-    /** This property is purely for type inference and should not be used. */
-    public _catchall!: ZPOptions["catchall"] extends ZodTypeAny ? ZPOptions["catchall"] : ZodTypeAny;
+        ? ZodParamsMakeOptionalSchema<ZPSchema>
+        : ZPOptions["deepPartial"] extends true
+        ? {
+              [K in keyof ZPSchema]: ZPSchema[K] extends ZodOptional<ZPSchema[K]>
+                  ? ZodDeepPartial<ZPSchema[K]>
+                  : ZodOptional<ZodDeepPartial<ZPSchema[K]>>;
+          }
+        : ZPSchema;
 
-    public readonly _validator: z.ZodObject<this["_processedSchema"], this["_mode"], this["_catchall"]>;
+    /** This property is purely for type inference and should not be used. */
+    public _catchall!: ZPOptions["catchall"] extends ZodTypeAny
+        ? ZPOptions["catchall"]
+        : ZodTypeAny;
+
+    public readonly _validator: z.ZodObject<
+        this["_processedSchema"],
+        this["_mode"],
+        this["_catchall"]
+    >;
 
     /**
      * Creates a new ZodParams adapter, which can be used to more easily provide typing information to Moleculer services and calls.
@@ -64,20 +77,14 @@ export class ZodParams<
         this._validator = z.object(this._rawSchema);
 
         if (opts.strip) {
-            this._mode = "strip" as ZodParamsOptionsMode<ZPOptions>;
             // @ts-expect-error
             this._validator = this._validator.strip();
         } else if (opts.strict) {
-            this._mode = "strict" as ZodParamsOptionsMode<ZPOptions>;
             // @ts-expect-error
             this._validator = this._validator.strict();
         } else if (opts.passthrough) {
-            this._mode = "passthrough" as ZodParamsOptionsMode<ZPOptions>;
             // @ts-expect-error
             this._validator = this._validator.passthrough();
-        } else {
-            // This doesn't do anything because
-            this._mode = "strip" as ZodParamsOptionsMode<ZPOptions>;
         }
 
         if (opts.partial) {
@@ -91,31 +98,6 @@ export class ZodParams<
         if (opts.catchall) {
             this._validator = this._validator.catchall(opts.catchall);
         }
-
-        // So, there's a bug in my code where the types for all of these options
-        // are generated regardless of the options chosen. I'm not sure how to address
-        // this, unfortunately. TODO: Figure this out later
-        // let validator;
-
-        // if (opts.strip) {
-        //     validator = z.object(this._rawSchema).strip();
-        // } else if (opts.passthrough) {
-        //     validator = z.object(this._rawSchema).passthrough();
-        // } else if (opts.strict) {
-        //     validator = z.object(this._rawSchema).strict();
-        // } else {
-        //     validator = z.object(this._rawSchema);
-        // }
-
-        // if (opts.partial) {
-        //     validator = validator.partial();
-        // }
-        // if (opts.deepPartial) {
-        //     validator = validator.deepPartial();
-        // }
-        // if (opts.catchall) {
-        //     validator = validator.catchall(opts.catchall);
-        // }
 
         this._rawSchemaWithOptions = Object.assign({}, schema, {
             $$$options: opts
@@ -195,16 +177,8 @@ const ZodParamsOptions = z
     .partial();
 
 export type ZodParamsOptionsType = {
-    catchall?: ZodTypeAny
+    catchall?: ZodTypeAny;
 } & Omit<z.input<typeof ZodParamsOptions>, "catchall">;
-
-type ZodParamsOptionsMode<T extends ZodParamsOptionsType> = T["strip"] extends true
-    ? "strip"
-    : T["strict"] extends true
-    ? "strict"
-    : T["passthrough"] extends true
-    ? "passthrough"
-    : "strip";
 
 type ZodParamsMakeOptionalSchema<T extends Parameters<(typeof z)["object"]>[0]> = {
     [K in keyof T]: T[K] extends ZodOptional<T[K]> ? T[K] : ZodOptional<T[K]>;
