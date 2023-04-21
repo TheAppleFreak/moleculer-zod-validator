@@ -240,13 +240,16 @@ describe("modifiers", () => {
         expect(data).toEqual({ objectProp: { nestedStringProp: "yes" } });
     });
 
+    // This invokes an upstream bug with type inferences
+    // https://github.com/colinhacks/zod/issues/1949
+    // TODO: Remove @ts-expect-error once that's fixed
     test("catchall modifier (valid)", async () => {
         const data = await broker.call<
             typeof catchallParams.context,
             typeof catchallParams.call
         >("test.catchallParams", {
             stringProp: "yes",
-            // @ts-ignore
+            // @ts-expect-error
             unrecognizedNumberProp: 42
         });
 
@@ -259,7 +262,7 @@ describe("modifiers", () => {
                 "test.strictParams",
                 {
                     stringProp: "yes",
-                    // @ts-ignore
+                    // @ts-expect-error
                     unrecognizedBooleanProp: false
                 }
             );
@@ -283,7 +286,7 @@ describe("unrecognized parameters", () => {
             "test.oneParam",
             {
                 stringProp: "yes",
-                // @ts-ignore
+                // @ts-expect-error
                 unrecognizedParam: null
             }
         );

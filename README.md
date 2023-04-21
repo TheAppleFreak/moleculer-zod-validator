@@ -54,6 +54,15 @@ The `ZodParams` constructor takes one or two arguments, `schema` and optionally 
   * `strict` (boolean) - Throws an error if unrecognized keys are present. Mutually exclusive with `passthrough` and `strip`. ([docs](https://github.com/colinhacks/zod#strict))
   * `catchall` (Zod validator) - Validates all unknown keys against this schema. Obviates `strict`, `passthrough`, and `strip`. ([docs](https://github.com/colinhacks/zod#catchall))
 
+    **NOTE**: [There is currently an upstream bug in Zod that prevents `catchall` type inference from working correctly.](https://github.com/colinhacks/zod/issues/1949) Type inference for catchall in ZodParams is disabled for the time being until that is fixed. If you wish to emulate the type inference, you can do so by using a type union when using `broker.call` or `ctx.call`. 
+
+    ```ts
+    broker.call<
+        ReturnType,
+        typeof zodParamObject.call & {[index: string]: string}
+    >({ ... })
+    ```
+
 Additionally, support for object transformations is present, allowing for the use of features such as [preprocessing](https://github.com/colinhacks/zod#preprocess), [refinements](https://github.com/colinhacks/zod#refine), [transforms](https://github.com/colinhacks/zod#transform), and [defaults](https://github.com/colinhacks/zod#default). 
 
 Once constructed, there are four properties exposed on the `ZodParams` object.

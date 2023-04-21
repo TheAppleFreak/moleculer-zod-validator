@@ -62,12 +62,13 @@ export class ZodValidator extends Validators.Base {
                 } else {
                     compiled = z.object(schema).strip();
                 }
+
                 if (opts.partial) {
                     compiled = compiled.partial();
-                }
-                if (opts.deepPartial) {
+                } else if (opts.deepPartial) {
                     compiled = compiled.deepPartial();
                 }
+
                 if (opts.catchall) {
                     compiled = compiled.catchall(opts.catchall);
                 }
