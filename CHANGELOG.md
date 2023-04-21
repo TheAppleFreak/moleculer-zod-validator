@@ -1,5 +1,20 @@
 # CHANGELOG
 
+(all dates use the ISO-8601 format, which is YYYY/MM/DD)
+
+## 3.1.0 (2023/4/21)
+
+* Type inference now works (mostly) as expected! While the runtime behavior of the package worked as expected during work on 3.0.0 and was what I had been testing, I somehow was completely unaware that type inference was completely broken. It's a bit embarrassing for me, to be honest. It took more energy than I had anticipated to make it work, but type inferences now behave when using `typeof .call` and `typeof .context` almost exactly as they do in Zod with `z.input<typeof validator>` and `z.infer<typeof validator>`/`z.output<typeof validator>`.
+
+  I do say almost, as there is an important note that is worth mentioning. [There's a known upstream bug in Zod where using `.catchall()` results in bugged TypeScript type inference](https://github.com/colinhacks/zod/issues/1949). While I could have left that behavior in ZodParams for parity with Zod, the sudden introduction of that behavior could break builds (it already broke one of our tests, through no fault of my own), so for the time being I've disabled catchall type inference in ZodParams. When the bug is fixed upstream, I'll reenable that behavior here. 
+
+  Beyond all of this, there should be no other changes and everything should Just Work™ as expected.
+* Updated dev dependencies
+
+## 3.0.1 (2023/4/13)
+
+* No changes were made; NPM just didn't get the memo that there was a README.
+
 ## 3.0.0 (2023/4/13)
 
 * **BREAKING CHANGE** - The minimum compatible Node.js version is now Node.js v17.0.0. This is due to the requirement of the `structuredClone` function in the fastest-validator fallback (described below), which in Node.js is only available in v17.0.0 and above. I tried using Lodash's `cloneDeep` method like Moleculer itself uses, but for a reason unknown to me it kept causing crashes during unit testing that I couldn't figure out. `structuredClone` does work, however, which should solve the same problem. 

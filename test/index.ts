@@ -240,15 +240,16 @@ describe("modifiers", () => {
         expect(data).toEqual({ objectProp: { nestedStringProp: "yes" } });
     });
 
-    // This might be an upstream issue right now? (Zod 3.21.4)
-    // TODO: Remove this once Zod fixes the catchall bug in their typings
+    // This invokes an upstream bug with type inferences
+    // https://github.com/colinhacks/zod/issues/1949
+    // TODO: Remove @ts-expect-error once that's fixed
     test("catchall modifier (valid)", async () => {
         const data = await broker.call<
             typeof catchallParams.context,
             typeof catchallParams.call
-            // @ts-ignore
         >("test.catchallParams", {
             stringProp: "yes",
+            // @ts-expect-error
             unrecognizedNumberProp: 42
         });
 

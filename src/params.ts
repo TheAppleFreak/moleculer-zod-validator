@@ -44,10 +44,14 @@ export class ZodParams<
           }
         : ZPSchema;
 
+    // There's currently a bug in Zod regarding this. Disabling catchall inference
+    // until this is sorted properly
+    // https://github.com/colinhacks/zod/issues/1949
     /** This property is purely for type inference and should not be used. */
-    public _catchall!: ZPOptions["catchall"] extends ZodTypeAny
-        ? ZPOptions["catchall"]
-        : ZodTypeAny;
+    public _catchall!: ZodTypeAny;
+    // public _catchall!: ZPOptions["catchall"] extends ZodTypeAny
+    //     ? ZPOptions["catchall"]
+    //     : ZodTypeAny;
 
     public readonly _validator: z.ZodObject<
         this["_processedSchema"],
@@ -60,6 +64,21 @@ export class ZodParams<
      * @param {ZodRawShape} schema - The schema used in {@link https://github.com/colinhacks/zod#objects z.object()}.
      * @param {ZodParamsOptionsType} options - This exposes several methods available on the ZodObject type,
      * {@link https://github.com/colinhacks/zod#table-of-contents which can be referenced under the Objects section in the Zod documentation}.
+     *
+     * **Note**: {@link https://github.com/colinhacks/zod/issues/1949 There's currently a known issue in Zod where catchall type inferences don't work correctly.}
+     * Until this upstream issue is fixed, catchall type inferences on ZodParams will
+     * be disabled as not to break existing projects. This will not impact the runtime
+     * behavior of catchall in the validator, just the type inference.
+     *
+     * If you wish to emulate the type inference, you can do so by using a TS union
+     * when using broker.call or ctx.call.
+     *
+     * @example
+     * broker.call<
+     *     ReturnType,
+     *     typeof zodParamObject.call & {[index: string]: string}
+     * >({ ... })
+     *
      */
     constructor(schema: ZPSchema, options?: ZPOptions) {
         this._rawSchema = schema;
