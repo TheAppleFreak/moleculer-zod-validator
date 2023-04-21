@@ -246,7 +246,6 @@ describe("modifiers", () => {
             typeof catchallParams.call
         >("test.catchallParams", {
             stringProp: "yes",
-            // @ts-ignore
             unrecognizedNumberProp: 42
         });
 
@@ -259,7 +258,7 @@ describe("modifiers", () => {
                 "test.strictParams",
                 {
                     stringProp: "yes",
-                    // @ts-ignore
+                    // @ts-expect-error
                     unrecognizedBooleanProp: false
                 }
             );
@@ -283,7 +282,7 @@ describe("unrecognized parameters", () => {
             "test.oneParam",
             {
                 stringProp: "yes",
-                // @ts-ignore
+                // @ts-expect-error
                 unrecognizedParam: null
             }
         );

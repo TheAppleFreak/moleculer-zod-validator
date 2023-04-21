@@ -1,25 +1,46 @@
 import { z } from "zod";
 
-import type { ZodOptional } from "zod";
+import type {
+    ZodArray,
+    ZodNullable,
+    ZodObject,
+    ZodOptional,
+    ZodRawShape,
+    ZodTuple,
+    ZodTupleItems,
+    ZodTypeAny
+} from "zod";
 
 /**
  * An adapter for a standard {@link https://github.com/colinhacks/zod#objects ZodObject},
  * which can be easier to work with in Moleculer than Zod on its own.
  */
-export class ZodParams<Schema extends Parameters<(typeof z)["object"]>[0]> {
-    private _rawSchema: Schema;
-    private _rawSchemaWithOptions!: Schema & {
+export class ZodParams<
+    ZPSchema extends Parameters<(typeof z)["object"]>[0],
+    ZPOptions extends ZodParamsOptionsType
+> {
+    private _rawSchema: ZPSchema;
+    private _rawSchemaWithOptions!: ZPSchema & {
         $$$options: z.infer<typeof ZodParamsOptions>;
     };
 
-    // This is an attempt to improve type inference
-    public _mode: "strip" | "strict" | "passthrough";
-    public _partial: boolean;
+    // These types are used purely to assist in type inference within this class
+    /** This property is purely for type inference and should not be used. */
+    public _mode!: ZodParamsOptionsMode<ZPOptions>;
+    /** This property is purely for type inference and should not be used. */
+    public _processedSchema!: ZPOptions["partial"] extends true
+    ? ZodParamsMakeOptionalSchema<ZPSchema>
+    : ZPOptions["deepPartial"] extends true
+    ? {
+        [K in keyof ZPSchema]: ZPSchema[K] extends ZodOptional<ZPSchema[K]>
+        ? ZodDeepPartial<ZPSchema[K]>
+        : ZodOptional<ZodDeepPartial<ZPSchema[K]>>;
+    }
+    : ZPSchema;
+    /** This property is purely for type inference and should not be used. */
+    public _catchall!: ZPOptions["catchall"] extends ZodTypeAny ? ZPOptions["catchall"] : ZodTypeAny;
 
-    public readonly _validator: z.ZodObject<
-        Schema,
-        this["_mode"]
-    >;
+    public readonly _validator: z.ZodObject<this["_processedSchema"], this["_mode"], this["_catchall"]>;
 
     /**
      * Creates a new ZodParams adapter, which can be used to more easily provide typing information to Moleculer services and calls.
@@ -27,33 +48,49 @@ export class ZodParams<Schema extends Parameters<(typeof z)["object"]>[0]> {
      * @param {ZodParamsOptionsType} options - This exposes several methods available on the ZodObject type,
      * {@link https://github.com/colinhacks/zod#table-of-contents which can be referenced under the Objects section in the Zod documentation}.
      */
-    constructor(schema: Schema, options: ZodParamsOptionsType = {}) {
+    constructor(schema: ZPSchema, options?: ZPOptions) {
         this._rawSchema = schema;
 
-        const opts = ZodParamsOptions.parse(options);
+        const opts = ZodParamsOptions.parse(options || {});
 
         // This is an effort to hopefully improve type inference
-        this._partial = false;
+        // As for the @ts-expect-errors ahead, while trying to get this code to work as
+        // you'd expect, I had to use some of my own types that were supposed to be
+        // interoperable with the original Zod types. While the interop is supposed to
+        // be one-way, TypeScript is giving me errors assuming it's supposed to go both
+        // ways. As much as I'd like to give TS as much power over things as I can,
+        // here it's just wrong.
+        // @ts-expect-error
         this._validator = z.object(this._rawSchema);
 
         if (opts.strip) {
-            this._mode = "strip";
+            this._mode = "strip" as ZodParamsOptionsMode<ZPOptions>;
+            // @ts-expect-error
             this._validator = this._validator.strip();
         } else if (opts.strict) {
-            this._mode = "strict";
+            this._mode = "strict" as ZodParamsOptionsMode<ZPOptions>;
+            // @ts-expect-error
             this._validator = this._validator.strict();
         } else if (opts.passthrough) {
-            this._mode = "passthrough";
+            this._mode = "passthrough" as ZodParamsOptionsMode<ZPOptions>;
+            // @ts-expect-error
             this._validator = this._validator.passthrough();
         } else {
-            this._mode = "strip";
+            // This doesn't do anything because
+            this._mode = "strip" as ZodParamsOptionsMode<ZPOptions>;
         }
 
-        // TODO: Figure out how to make Schema optional
         if (opts.partial) {
-            this._partial = true;
-            // this._validator = this._validator.partial();
-        } 
+            // @ts-expect-error
+            this._validator = this._validator.partial();
+        } else if (opts.deepPartial) {
+            // @ts-expect-error
+            this._validator = this._validator.deepPartial();
+        }
+
+        if (opts.catchall) {
+            this._validator = this._validator.catchall(opts.catchall);
+        }
 
         // So, there's a bug in my code where the types for all of these options
         // are generated regardless of the options chosen. I'm not sure how to address
@@ -157,4 +194,45 @@ const ZodParamsOptions = z
     })
     .partial();
 
-export type ZodParamsOptionsType = z.input<typeof ZodParamsOptions>;
+export type ZodParamsOptionsType = {
+    catchall?: ZodTypeAny
+} & Omit<z.input<typeof ZodParamsOptions>, "catchall">;
+
+type ZodParamsOptionsMode<T extends ZodParamsOptionsType> = T["strip"] extends true
+    ? "strip"
+    : T["strict"] extends true
+    ? "strict"
+    : T["passthrough"] extends true
+    ? "passthrough"
+    : "strip";
+
+type ZodParamsMakeOptionalSchema<T extends Parameters<(typeof z)["object"]>[0]> = {
+    [K in keyof T]: T[K] extends ZodOptional<T[K]> ? T[K] : ZodOptional<T[K]>;
+};
+
+// This is for implementing the deepPartial behavior in the types
+// Originally from zod/src/helpers/partialUtil.ts
+// https://github.com/colinhacks/zod/blob/4d016b772b79d566bfa2a0c2fc5bfbd92b776982/src/helpers/partialUtil.ts
+type ZodDeepPartial<T extends ZodTypeAny> = T extends ZodObject<ZodRawShape>
+    ? ZodObject<
+          { [k in keyof T["shape"]]: ZodOptional<ZodDeepPartial<T["shape"][k]>> },
+          T["_def"]["unknownKeys"],
+          T["_def"]["catchall"]
+      >
+    : T extends ZodArray<infer Type, infer Card>
+    ? ZodArray<ZodDeepPartial<Type>, Card>
+    : T extends ZodOptional<infer Type>
+    ? ZodOptional<ZodDeepPartial<Type>>
+    : T extends ZodNullable<infer Type>
+    ? ZodNullable<ZodDeepPartial<Type>>
+    : T extends ZodTuple<infer Items>
+    ? {
+          [k in keyof Items]: Items[k] extends ZodTypeAny
+              ? ZodDeepPartial<Items[k]>
+              : never;
+      } extends infer PI
+        ? PI extends ZodTupleItems
+            ? ZodTuple<PI>
+            : never
+        : never
+    : T;
