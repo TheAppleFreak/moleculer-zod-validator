@@ -62,6 +62,23 @@ The `ZodParams` constructor takes one or two arguments, `schema` and optionally 
         typeof zodParamObject.call & {[index: string]: string}
     >({ ... })
     ```
+  * `refine` (function OR object) - Adds custom validation logic to the Zod object that can't be represented in TypeScript's type system or purely using Zod validators on their own (for example, making sure that at least one of several optional items are present). Returning any falsy value will fail validation, while returning any truthy value will pass validation. ([docs](https://github.com/colinhacks/zod/#refine))
+
+    There are two ways to use this property. You can either pass in a validation function taking one parameter (representing the object being passed in) or an object with optionally two properties.
+
+      * `validator` (function) - A validation function taking one parameter, representing the object being validated currently.
+      * `params` (object, optional) - Additional properties to customize the error handling behavior, [as described in the Zod documentation](https://github.com/colinhacks/zod/#arguments)
+    
+    If both `refine` and `superRefine` are defined, `refine` will run last (after `superRefine`).
+
+  * `superRefine` (function) - Adds custom validation logic to the Zod object that can't be represented in TypeScript's type system or purely using Zod validators on their own (for example, making sure that at least one of several optional items are present). This is a more powerful and verbose method of performing refinements. Validation will pass unless `ctx.addIssue` is called. ([docs](https://github.com/colinhacks/zod/#superrefine))
+
+    This property takes a function with two arguments, `val` and `ctx` (not to be confused with Moleculer's `ctx` option).
+    
+      * `val` (object) - An object representing the object being validated currently. 
+      * `ctx` (object) - An object provided by Zod. 
+    
+    If both `refine` and `superRefine` are defined, `superRefine` will run first (before `refine`).
 
 Additionally, support for object transformations is present, allowing for the use of features such as [preprocessing](https://github.com/colinhacks/zod#preprocess), [refinements](https://github.com/colinhacks/zod#refine), [transforms](https://github.com/colinhacks/zod#transform), and [defaults](https://github.com/colinhacks/zod#default). 
 

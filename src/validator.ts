@@ -60,7 +60,7 @@ export class ZodValidator extends Validators.Base {
                 } else if (opts.passthrough) {
                     compiled = z.object(schema).passthrough();
                 } else {
-                    compiled = z.object(schema).strip();
+                    compiled = z.object(schema);
                 }
 
                 if (opts.partial) {
@@ -71,6 +71,21 @@ export class ZodValidator extends Validators.Base {
 
                 if (opts.catchall) {
                     compiled = compiled.catchall(opts.catchall);
+                }
+
+                // Functions should be considered truthy
+                if (opts.superRefine) {
+                    compiled = compiled.superRefine(opts.superRefine);
+                }
+                if (opts.refine) {
+                    if (typeof opts.refine === "function") {
+                        compiled = compiled.refine(opts.refine);
+                    } else {
+                        compiled = compiled.refine(
+                            opts.refine.validator,
+                            opts.refine.params
+                        );
+                    }
                 }
 
                 const results = compiled.parse(params);

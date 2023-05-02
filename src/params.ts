@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { ZodType, z } from "zod";
 
 import type {
     ZodArray,
@@ -24,7 +24,6 @@ export class ZodParams<
         $$$options: z.infer<typeof ZodParamsOptions>;
     };
 
-    // These types are used purely to assist in type inference within this class
     /** This property is purely for type inference and should not be used. */
     public _mode!: ZPOptions["strip"] extends true
         ? "strip"
@@ -118,6 +117,24 @@ export class ZodParams<
             this._validator = this._validator.catchall(opts.catchall);
         }
 
+        // Functions should be considered truthy
+        if (opts.superRefine) {
+            // @ts-expect-error
+            this._validator = this._validator.superRefine(opts.superRefine);
+        }
+        if (opts.refine) {
+            if (typeof opts.refine === "function") {
+                // @ts-expect-error
+                this._validator = this._validator.refine(opts.refine);
+            } else {
+                // @ts-expect-error
+                this._validator = this._validator.refine(
+                    opts.refine.validator,
+                    opts.refine.params
+                );
+            }
+        }
+
         this._rawSchemaWithOptions = Object.assign({}, schema, {
             $$$options: opts
         });
@@ -191,13 +208,46 @@ const ZodParamsOptions = z
         strict: z.boolean().default(false),
         catchall: z.any(),
         passthrough: z.boolean(),
-        strip: z.boolean().default(false)
+        strip: z.boolean().default(false),
+        refine: z.union([
+            // Not sure how best to represent the validator function params
+            z.function().args(z.any()),
+            z.object({
+                validator: z.function().args(z.any()),
+                params: z
+                    .object({
+                        message: z.string(),
+                        path: z.array(z.union([z.string(), z.number()])),
+                        params: z.object({}).passthrough()
+                    })
+                    .partial()
+                    .optional()
+            })
+        ]),
+        superRefine: z.function().args(z.any(), z.any())
     })
     .partial();
 
 export type ZodParamsOptionsType = {
     catchall?: ZodTypeAny;
-} & Omit<z.input<typeof ZodParamsOptions>, "catchall">;
+    refine?:
+        | Parameters<ZodType["refine"]>[0]
+        | {
+              validator: Parameters<ZodType["refine"]>[0];
+              params?: {
+                  // override error message
+                  message?: string;
+
+                  // appended to error path
+                  path?: (string | number)[];
+
+                  // params object you can use to customize message
+                  // in error map
+                  params?: object;
+              };
+          };
+    superRefine?: Parameters<ZodType["superRefine"]>[0];
+} & Omit<z.input<typeof ZodParamsOptions>, "catchall" | "refine" | "superRefine">;
 
 type ZodParamsMakeOptionalSchema<T extends Parameters<(typeof z)["object"]>[0]> = {
     [K in keyof T]: T[K] extends ZodOptional<T[K]> ? T[K] : ZodOptional<T[K]>;
