@@ -6,6 +6,7 @@
 
 * Added support for the `.refine` and `.superRefine` methods. These add additional flexibility for validation. This closes [Issue #7](https://github.com/TheAppleFreak/moleculer-zod-validator/issues/7).
 * Added new unit tests for both methods
+* Changed GitHub Actions workflows to work with Node 17 (earliest supported) and the current latest version, as opposed to 17 and 18.
 
 ## 3.1.0 (2023/4/21)
 
