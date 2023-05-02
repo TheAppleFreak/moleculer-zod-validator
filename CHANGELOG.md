@@ -4,7 +4,7 @@
 
 ## 3.2.0 (2023/5/2)
 
-* Added support for the `.refine` and `.superRefine` methods. These add additional flexibility for validation. 
+* Added support for the `.refine` and `.superRefine` methods. These add additional flexibility for validation. This closes [Issue #7](https://github.com/TheAppleFreak/moleculer-zod-validator/issues/7).
 * Added new unit tests for both methods
 
 ## 3.1.0 (2023/4/21)
