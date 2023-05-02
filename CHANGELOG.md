@@ -2,6 +2,11 @@
 
 (all dates use the ISO-8601 format, which is YYYY/MM/DD)
 
+## 3.2.0 (2023/5/2)
+
+* Added support for the `.refine` and `.superRefine` methods. These add additional flexibility for validation. 
+* Added new unit tests for both methods
+
 ## 3.1.0 (2023/4/21)
 
 * Type inference now works (mostly) as expected! While the runtime behavior of the package worked as expected during work on 3.0.0 and was what I had been testing, I somehow was completely unaware that type inference was completely broken. It's a bit embarrassing for me, to be honest. It took more energy than I had anticipated to make it work, but type inferences now behave when using `typeof .call` and `typeof .context` almost exactly as they do in Zod with `z.input<typeof validator>` and `z.infer<typeof validator>`/`z.output<typeof validator>`. This closes [Issue #5](https://github.com/TheAppleFreak/moleculer-zod-validator/issues/5).
