@@ -2,9 +2,13 @@
 
 (all dates use the ISO-8601 format, which is YYYY/MM/DD)
 
+## 3.3.1 (2023/6/22)
+
+* Minor documentation change to reflect that you can't use a `ReturnType` with classes, as you'd run into TS2052. Whoops.
+
 ## 3.3.0 (2023/6/22)
 
-* Added the `.return` propertyy to `ZodParams`. This is a utility to store return types that can be used for typing action calls elsewhere.
+* Added the `.return` property to `ZodParams`. This is a utility to store return types that can be used for typing action calls elsewhere.
 
   Return values are provided by providing a type on a new third optional constructor parameter. It does not matter what is passed in, so long as it is given the desired return types using the `as` keyword. Once stored, these can be referred to in the same way that you would access `.call` and `.context`. 
 
@@ -15,25 +19,6 @@
 
   const returnedValue = broker.call<typeof sampleParam.return, typeof sampleParam.call>({ property: "whatever" });
   // type of returnedValue is Promise<string>
-  ```
-
-  If you use classes for your services, you can get the return types easily like such: 
-
-  ```ts
-  class ExampleService extends Service {
-      public async sampleMethod(ctx: Context<typeof sampleParam.context>) {
-          return {
-              property1: "string",
-              property2: 42069
-          }
-      }
-  }
-
-  const sampleParam = new ZodParams(
-      { ... }, 
-      undefined, 
-      {} as ReturnType<ExampleService["sampleMethod"]>
-  );
   ```
 * Updated dev dependencies
 

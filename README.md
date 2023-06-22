@@ -90,25 +90,6 @@ The `ZodParams` constructor takes one to three arguments: `schema`, optionally `
   // type of returnedValue is Promise<string>
   ```
 
-  If you use classes for your services, you can get the return types easily like such: 
-
-  ```ts
-  class ExampleService extends Service {
-      public async sampleMethod(ctx: Context<typeof sampleParam.context>) {
-          return {
-              property1: "string",
-              property2: 42069
-          }
-      }
-  }
-
-  const sampleParam = new ZodParams(
-      { ... }, 
-      undefined, 
-      {} as ReturnType<ExampleService["sampleMethod"]>
-  );
-  ```
-
 Additionally, support for object transformations is present, allowing for the use of features such as [preprocessing](https://github.com/colinhacks/zod#preprocess), [refinements](https://github.com/colinhacks/zod#refine), [transforms](https://github.com/colinhacks/zod#transform), and [defaults](https://github.com/colinhacks/zod#default). 
 
 Once constructed, there are five properties exposed on the `ZodParams` object.
