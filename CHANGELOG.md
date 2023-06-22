@@ -2,6 +2,41 @@
 
 (all dates use the ISO-8601 format, which is YYYY/MM/DD)
 
+## 3.3.0 (2023/6/22)
+
+* Added the `.return` propertyy to `ZodParams`. This is a utility to store return types that can be used for typing action calls elsewhere.
+
+  Return values are provided by providing a type on a new third optional constructor parameter. It does not matter what is passed in, so long as it is given the desired return types using the `as` keyword. Once stored, these can be referred to in the same way that you would access `.call` and `.context`. 
+
+  ```ts
+  const sampleParam = new ZodParams({ property: z.string() }, undefined, {} as Promise<string>);
+
+  ... 
+
+  const returnedValue = broker.call<typeof sampleParam.return, typeof sampleParam.call>({ property: "whatever" });
+  // type of returnedValue is Promise<string>
+  ```
+
+  If you use classes for your services, you can get the return types easily like such: 
+
+  ```ts
+  class ExampleService extends Service {
+      public async sampleMethod(ctx: Context<typeof sampleParam.context>) {
+          return {
+              property1: "string",
+              property2: 42069
+          }
+      }
+  }
+
+  const sampleParam = new ZodParams(
+      { ... }, 
+      undefined, 
+      {} as ReturnType<ExampleService["sampleMethod"]>
+  );
+  ```
+* Updated dev dependencies
+
 ## 3.2.0 (2023/5/2)
 
 * Added support for the `.refine` and `.superRefine` methods. These add additional flexibility for validation. This closes [Issue #7](https://github.com/TheAppleFreak/moleculer-zod-validator/issues/7).
