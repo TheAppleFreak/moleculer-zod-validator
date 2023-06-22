@@ -17,7 +17,8 @@ import type {
  */
 export class ZodParams<
     ZPSchema extends Parameters<(typeof z)["object"]>[0],
-    ZPOptions extends ZodParamsOptionsType
+    ZPOptions extends ZodParamsOptionsType,
+    ZPReturn = any
 > {
     private _rawSchema: ZPSchema;
     private _rawSchemaWithOptions!: ZPSchema & {
@@ -59,12 +60,22 @@ export class ZodParams<
     >;
 
     /**
-     * Creates a new ZodParams adapter, which can be used to more easily provide typing information to Moleculer services and calls.
-     * @param {ZodRawShape} schema - The schema used in {@link https://github.com/colinhacks/zod#objects z.object()}.
-     * @param {ZodParamsOptionsType} options - This exposes several methods available on the ZodObject type,
-     * {@link https://github.com/colinhacks/zod#table-of-contents which can be referenced under the Objects section in the Zod documentation}.
+     * Creates a new ZodParams adapter, which can be used to more easily provide typing
+     * information to Moleculer services and calls.
+     * @param {ZodRawShape} schema - The schema used in 
+     * {@link https://github.com/colinhacks/zod#objects z.object()}.
+     * @param {ZodParamsOptionsType} options - This exposes several methods available
+     * on the ZodObject type,
+     * {@link https://github.com/colinhacks/zod#table-of-contents all of which can be referenced under the Objects section in the Zod documentation}.
+     * @param {any} returnType - The return type of the action in question. This does
+     * nothing at runtime and is used purely for storing a type on the object that can
+     * then be referenced later on. This can be done like so:
+     * 
+     * @example <caption>The return type will be `Promise<string>`</caption>
+     * new ZodParams({ property: z.string() }, undefined, {} as Promise<string>)
      *
-     * **Note**: {@link https://github.com/colinhacks/zod/issues/1949 There's currently a known issue in Zod where catchall type inferences don't work correctly.}
+     * @todo
+     * **Note**: {@link https://github.com/colinhacks/zod/issues/1949 There's currently a known issue in Zod where catchall type inferences don't work correctly.} 
      * Until this upstream issue is fixed, catchall type inferences on ZodParams will
      * be disabled as not to break existing projects. This will not impact the runtime
      * behavior of catchall in the validator, just the type inference.
@@ -74,12 +85,12 @@ export class ZodParams<
      *
      * @example
      * broker.call<
-     *     ReturnType,
+     *     typeof zodParamObject.return,
      *     typeof zodParamObject.call & {[index: string]: string}
      * >({ ... })
      *
      */
-    constructor(schema: ZPSchema, options?: ZPOptions) {
+    constructor(schema: ZPSchema, options?: ZPOptions, returnType?: ZPReturn) {
         this._rawSchema = schema;
 
         const opts = ZodParamsOptions.parse(options || {});
@@ -173,7 +184,7 @@ export class ZodParams<
      *
      * @example
      * broker.call<
-     *     ReturnType,
+     *     typeof zodParamObject.return,
      *     typeof zodParamObject.call
      * >({ ... })
      */
@@ -199,6 +210,19 @@ export class ZodParams<
      * });
      */
     public readonly context!: z.output<(typeof this)["_validator"]>;
+
+    /**
+     * The output type provided at the time of instantiation. This should be used with
+     * `broker.call` or `ctx.call` as the first type parameter to get proper types for
+     * the action call.
+     *
+     * @example
+     * broker.call<
+     *     typeof zodParamObject.return,
+     *     typeof zodParamObject.call
+     * >({ ... })
+     */
+    public readonly return!: Promise<ZPReturn>;
 }
 
 const ZodParamsOptions = z

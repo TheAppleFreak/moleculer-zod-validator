@@ -43,7 +43,7 @@ As of v3.0.0, moleculer-zod-validator implements the default Moleculer validator
 
 One of Zod's main features is how it can infer TypeScript types from a schema. To simplify the usage of this, there is a convenience utility called `ZodParams` that allows for easy access to the necessary data.
 
-The `ZodParams` constructor takes one or two arguments, `schema` and optionally `options`. 
+The `ZodParams` constructor takes one to three arguments: `schema`, optionally `options`, and optionally `returnValue`.
 
 * `schema` - This is a schema object that gets passed directly into `z.object`. [For all available schema options, please look at the Zod documentation.](https://github.com/colinhacks/zod#defining-schemas)
 * `options` - This provides access to some of the different functions available on a standard Zod object. All booleans default to `false` except for `strip`, which is implicitly set to `true`.
@@ -79,15 +79,45 @@ The `ZodParams` constructor takes one or two arguments, `schema` and optionally 
       * `ctx` (object) - An object provided by Zod. 
     
     If both `refine` and `superRefine` are defined, `superRefine` will run first (before `refine`).
+* `returnType` - The return type of the action in question. It does not matter what actual value is passed in, so long as it is given the desired return types using the `as` keyword. Once stored, these can be referred to in the same way that you would access `.call` and `.context`. This can be done like so: 
+
+  ```ts
+  new ZodParams({ property: z.string() }, undefined, {} as Promise<string>);
+
+  ... 
+
+  const returnedValue = broker.call<typeof sampleParam.return, typeof sampleParam.call>({ property: "whatever" });
+  // type of returnedValue is Promise<string>
+  ```
+
+  If you use classes for your services, you can get the return types easily like such: 
+
+  ```ts
+  class ExampleService extends Service {
+      public async sampleMethod(ctx: Context<typeof sampleParam.context>) {
+          return {
+              property1: "string",
+              property2: 42069
+          }
+      }
+  }
+
+  const sampleParam = new ZodParams(
+      { ... }, 
+      undefined, 
+      {} as ReturnType<ExampleService["sampleMethod"]>
+  );
+  ```
 
 Additionally, support for object transformations is present, allowing for the use of features such as [preprocessing](https://github.com/colinhacks/zod#preprocess), [refinements](https://github.com/colinhacks/zod#refine), [transforms](https://github.com/colinhacks/zod#transform), and [defaults](https://github.com/colinhacks/zod#default). 
 
-Once constructed, there are four properties exposed on the `ZodParams` object.
+Once constructed, there are five properties exposed on the `ZodParams` object.
 
 * `schema` - The raw schema passed in. This should be passed to the `params` object in the action definition.
 * `context` - The inferred output type from the compiled validator. This should be used within the `Context` object in the action definition to get the proper types after the parameters have passed through validation. 
 * `call` - The inferred input type from the compiled validator. This should be used with `broker.call` or `ctx.call` as the second type parameter to get proper types for the action call. 
 * `validator` - The compiled validator. 
+* `return` - The types provided in the `returnType` argument when the instance was constructed. If none were provided, this defaults to a type of `any` instead.
 
 ```ts
 // It's easier to set up your validator objects outside of the service constructor so you can more easily access the typings later.
@@ -126,12 +156,12 @@ broker.createService({
 // ...
 
 broker.call<
-    ReturnType, 
+    typeof simpleValidator.return, 
     typeof simpleValidator.call
 >({ string: "yes", number: 42 }); // calls successfully
 
 broker.call<
-    ReturnType, 
+    typeof complexValidator.return, 
     typeof complexValidator.call
 >({
     object: { 
