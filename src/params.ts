@@ -1,4 +1,6 @@
 import { ZodType, z } from "zod";
+import { Errors } from "moleculer";
+import { mutateObject } from "./helpers";
 
 import type {
     ZodArray,
@@ -7,8 +9,6 @@ import type {
     ZodOptional,
     ZodRawShape,
     ZodTuple,
-    ZodTupleItems,
-    ZodTypeAny
 } from "zod";
 
 /**
@@ -16,53 +16,34 @@ import type {
  * which can be easier to work with in Moleculer than Zod on its own.
  */
 export class ZodParams<
-    ZPSchema extends Parameters<(typeof z)["object"]>[0],
+    ZPSchema extends ZodRawShape,
     ZPOptions extends ZodParamsOptionsType,
     ZPReturn = any
 > {
     private _rawSchema: ZPSchema;
     private _rawSchemaWithOptions!: ZPSchema & {
         $$$options: z.infer<typeof ZodParamsOptions>;
+        $$zodCheck: (params: unknown) => boolean;
     };
 
     /** This property is purely for type inference and should not be used. */
-    public _mode!: ZPOptions["strip"] extends true
-        ? "strip"
-        : ZPOptions["strict"] extends true
-        ? "strict"
-        : ZPOptions["passthrough"] extends true
-        ? "passthrough"
-        : "strip";
-    /** This property is purely for type inference and should not be used. */
     public _processedSchema!: ZPOptions["partial"] extends true
         ? ZodParamsMakeOptionalSchema<ZPSchema>
-        : ZPOptions["deepPartial"] extends true
-        ? {
-              [K in keyof ZPSchema]: ZPSchema[K] extends ZodOptional<ZPSchema[K]>
-                  ? ZodDeepPartial<ZPSchema[K]>
-                  : ZodOptional<ZodDeepPartial<ZPSchema[K]>>;
-          }
+        : ZPOptions["partial"] extends Record<string, true>
+        ? ZodParamsSelectiveOptionalSchema<ZPSchema, ZPOptions["partial"]>
+        : ZPOptions["required"] extends true
+        ? ZodParamsMakeRequiredSchema<ZPSchema>
+        : ZPOptions["required"] extends Record<string, true>
+        ? ZodParamsSelectiveRequiredSchema<ZPSchema, ZPOptions["required"]>
         : ZPSchema;
 
-    // There's currently a bug in Zod regarding this. Disabling catchall inference
-    // until this is sorted properly
-    // https://github.com/colinhacks/zod/issues/1949
-    /** This property is purely for type inference and should not be used. */
-    public _catchall!: ZodTypeAny;
-    // public _catchall!: ZPOptions["catchall"] extends ZodTypeAny
-    //     ? ZPOptions["catchall"]
-    //     : ZodTypeAny;
-
-    public readonly _validator: z.ZodObject<
-        this["_processedSchema"],
-        this["_mode"],
-        this["_catchall"]
-    >;
+    // @ts-ignore - _processedSchema satisfies ZodRawShape by construction; TS can't prove this for conditional types
+    public readonly _validator: z.ZodObject<this["_processedSchema"]>;
 
     /**
      * Creates a new ZodParams adapter, which can be used to more easily provide typing
      * information to Moleculer services and calls.
-     * @param {ZodRawShape} schema - The schema used in 
+     * @param {ZodRawShape} schema - The schema used in
      * {@link https://github.com/colinhacks/zod#objects z.object()}.
      * @param {ZodParamsOptionsType} options - This exposes several methods available
      * on the ZodObject type,
@@ -70,12 +51,12 @@ export class ZodParams<
      * @param {any} returnType - The return type of the action in question. This does
      * nothing at runtime and is used purely for storing a type on the object that can
      * then be referenced later on. This can be done like so:
-     * 
+     *
      * @example <caption>The return type will be `Promise<string>`</caption>
      * new ZodParams({ property: z.string() }, undefined, {} as Promise<string>)
      *
      * @todo
-     * **Note**: {@link https://github.com/colinhacks/zod/issues/1949 There's currently a known issue in Zod where catchall type inferences don't work correctly.} 
+     * **Note**: {@link https://github.com/colinhacks/zod/issues/1949 There's currently a known issue in Zod where catchall type inferences don't work correctly.}
      * Until this upstream issue is fixed, catchall type inferences on ZodParams will
      * be disabled as not to break existing projects. This will not impact the runtime
      * behavior of catchall in the validator, just the type inference.
@@ -102,26 +83,29 @@ export class ZodParams<
         // be one-way, TypeScript is giving me errors assuming it's supposed to go both
         // ways. As much as I'd like to give TS as much power over things as I can,
         // here it's just wrong.
-        // @ts-expect-error
-        this._validator = z.object(this._rawSchema);
-
-        if (opts.strip) {
+        if (opts.strictObject) {
             // @ts-expect-error
-            this._validator = this._validator.strip();
-        } else if (opts.strict) {
+            this._validator = z.object(this._rawSchema).strict();
+        } else if (opts.looseObject) {
             // @ts-expect-error
-            this._validator = this._validator.strict();
-        } else if (opts.passthrough) {
+            this._validator = z.object(this._rawSchema).passthrough();
+        } else {
             // @ts-expect-error
-            this._validator = this._validator.passthrough();
+            this._validator = z.object(this._rawSchema);
         }
 
         if (opts.partial) {
             // @ts-expect-error
-            this._validator = this._validator.partial();
-        } else if (opts.deepPartial) {
+            this._validator = this._validator.partial(
+                typeof opts.partial === "object" ? (opts.partial as any) : undefined
+            );
+        }
+
+        if (opts.required) {
             // @ts-expect-error
-            this._validator = this._validator.deepPartial();
+            this._validator = this._validator.required(
+                typeof opts.required === "object" ? (opts.required as any) : undefined
+            );
         }
 
         if (opts.catchall) {
@@ -130,24 +114,44 @@ export class ZodParams<
 
         // Functions should be considered truthy
         if (opts.superRefine) {
-            // @ts-expect-error
-            this._validator = this._validator.superRefine(opts.superRefine);
+            this._validator = this._validator.superRefine(opts.superRefine as any);
         }
         if (opts.refine) {
             if (typeof opts.refine === "function") {
-                // @ts-expect-error
-                this._validator = this._validator.refine(opts.refine);
+                this._validator = this._validator.refine(opts.refine as any);
             } else {
-                // @ts-expect-error
                 this._validator = this._validator.refine(
-                    opts.refine.validator,
-                    opts.refine.params
+                    (opts.refine as any).validator,
+                    (opts.refine as any).params
                 );
             }
         }
 
+        // Pre-compile the check function and store it as a plain function on the
+        // schema object. Moleculer's parseServiceSchema does _.cloneDeep(actionDef)
+        // which destroys Zod schema objects (strips non-enumerable _zod property,
+        // loses prototype chain). Lodash copies function *references* without deep-
+        // cloning them, so a function that closes over the ZodObject survives intact.
+        const validator = this._validator;
+        const zodCheck = function (params: unknown): boolean {
+            try {
+                const results = validator.parse(params);
+                mutateObject(params, results, false);
+                return true;
+            } catch (err) {
+                if (err instanceof z.ZodError)
+                    throw new Errors.ValidationError(
+                        "Parameter validation error",
+                        "VALIDATION_ERROR",
+                        err.issues
+                    );
+                throw err;
+            }
+        };
+
         this._rawSchemaWithOptions = Object.assign({}, schema, {
-            $$$options: opts
+            $$$options: opts,
+            $$zodCheck: zodCheck
         });
     }
 
@@ -188,9 +192,6 @@ export class ZodParams<
      *     typeof zodParamObject.call
      * >({ ... })
      */
-    // get call() {
-    //     return this._validator._input;
-    // }
     public readonly call!: z.input<(typeof this)["_validator"]>;
 
     /**
@@ -227,79 +228,52 @@ export class ZodParams<
 
 const ZodParamsOptions = z
     .object({
-        partial: z.boolean().default(false),
-        deepPartial: z.boolean().default(false),
-        strict: z.boolean().default(false),
+        partial: z.union([z.boolean(), z.record(z.string(), z.literal(true))]).default(false),
+        required: z.union([z.boolean(), z.record(z.string(), z.literal(true))]).default(false),
+        strictObject: z.boolean().default(false),
         catchall: z.any(),
-        passthrough: z.boolean(),
-        strip: z.boolean().default(false),
+        looseObject: z.boolean(),
         refine: z.union([
             // Not sure how best to represent the validator function params
-            z.function().args(z.any()),
+            z.function(),
             z.object({
-                validator: z.function().args(z.any()),
+                validator: z.function(),
                 params: z
-                    .object({
-                        message: z.string(),
-                        path: z.array(z.union([z.string(), z.number()])),
-                        params: z.object({}).passthrough()
-                    })
-                    .partial()
+                    .object({})
+                    .loose()
                     .optional()
             })
         ]),
-        superRefine: z.function().args(z.any(), z.any())
+        superRefine: z.function()
     })
     .partial();
 
+type RefineValidator = (val: any) => unknown | Promise<unknown>;
+type RefineParams = string | { message?: string; path?: (string | number)[]; params?: Record<string, unknown> };
+
 export type ZodParamsOptionsType = {
-    catchall?: ZodTypeAny;
+    catchall?: ZodType;
     refine?:
-        | Parameters<ZodType["refine"]>[0]
+        | RefineValidator
         | {
-              validator: Parameters<ZodType["refine"]>[0];
-              params?: {
-                  // override error message
-                  message?: string;
-
-                  // appended to error path
-                  path?: (string | number)[];
-
-                  // params object you can use to customize message
-                  // in error map
-                  params?: object;
-              };
+              validator: RefineValidator;
+              params?: RefineParams;
           };
-    superRefine?: Parameters<ZodType["superRefine"]>[0];
+    superRefine?: (arg: any, ctx: any) => void | Promise<void>;
 } & Omit<z.input<typeof ZodParamsOptions>, "catchall" | "refine" | "superRefine">;
 
-type ZodParamsMakeOptionalSchema<T extends Parameters<(typeof z)["object"]>[0]> = {
+type ZodParamsMakeOptionalSchema<T extends ZodRawShape> = {
     [K in keyof T]: T[K] extends ZodOptional<T[K]> ? T[K] : ZodOptional<T[K]>;
 };
 
-// This is for implementing the deepPartial behavior in the types
-// Originally from zod/src/helpers/partialUtil.ts
-// https://github.com/colinhacks/zod/blob/4d016b772b79d566bfa2a0c2fc5bfbd92b776982/src/helpers/partialUtil.ts
-type ZodDeepPartial<T extends ZodTypeAny> = T extends ZodObject<ZodRawShape>
-    ? ZodObject<
-          { [k in keyof T["shape"]]: ZodOptional<ZodDeepPartial<T["shape"][k]>> },
-          T["_def"]["unknownKeys"],
-          T["_def"]["catchall"]
-      >
-    : T extends ZodArray<infer Type, infer Card>
-    ? ZodArray<ZodDeepPartial<Type>, Card>
-    : T extends ZodOptional<infer Type>
-    ? ZodOptional<ZodDeepPartial<Type>>
-    : T extends ZodNullable<infer Type>
-    ? ZodNullable<ZodDeepPartial<Type>>
-    : T extends ZodTuple<infer Items>
-    ? {
-          [k in keyof Items]: Items[k] extends ZodTypeAny
-              ? ZodDeepPartial<Items[k]>
-              : never;
-      } extends infer PI
-        ? PI extends ZodTupleItems
-            ? ZodTuple<PI>
-            : never
-        : never
-    : T;
+type ZodParamsMakeRequiredSchema<T extends ZodRawShape> = {
+    [K in keyof T]: T[K] extends ZodOptional<infer Inner> ? Inner : T[K];
+};
+
+type ZodParamsSelectiveOptionalSchema<T extends ZodRawShape, Mask extends Record<string, true>> = {
+    [K in keyof T]: K extends keyof Mask ? ZodOptional<T[K]> : T[K];
+};
+
+type ZodParamsSelectiveRequiredSchema<T extends ZodRawShape, Mask extends Record<string, true>> = {
+    [K in keyof T]: K extends keyof Mask ? (T[K] extends ZodOptional<infer Inner> ? Inner : T[K]) : T[K];
+};

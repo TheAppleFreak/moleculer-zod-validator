@@ -2,6 +2,30 @@
 
 (all dates use the ISO-8601 format, which is YYYY/MM/DD)
 
+## 4.0.0 (TBD)
+
+It's been a while. With this update, the library is now compatible with Moleculer 0.15 and Zod 4, though there's a lot of breaking changes as a result of the larger changes in Zod. 
+
+* **BREAKING CHANGE** - Moleculer 0.15.x and Zod 4.x.x are now required as peer dependencies, up from 0.14.x and 3.x.x respectively.
+* **BREAKING CHANGE** - The minimum compatible Node.js version is now v22.0.0, matching Moleculer 0.15's requirements.
+* **BREAKING CHANGE** - The following options have been removed or renamed, mirroring changes in Zod: 
+  * `deepPartial` has been removed altogether, as there's no direct replacement in Zod 4.
+  * `strip` has been removed, as this is Zod 4's default behavior.
+  * `strict` has been renamed to `strictObject`, [matching Zod 4's `z.strictObject` property.](https://zod.dev/api?id=zstrictobject#zstrictobject)
+  * `passthrough` has been renamed to `looseObject`, [matching Zod 4's `z.looseObject` property.](https://zod.dev/api?id=zlooseobject#zlooseobject)
+* **BREAKING CHANGE** - The `ctx.addIssue()` format used in `superRefine` callbacks changed in Zod 4. [The `type` field has been replaced by `origin`.](https://zod.dev/api?id=superrefine#superrefine)
+* Added the `required` option. This is the inverse of `partial` and removes any `.optional()` wrappers from properties. 
+* `partial` and `required` now accept a mask object to selectively target specific properties rather than applying to all of them:
+
+  ```ts
+  // Make only `name` optional, leaving other properties required
+  new ZodParams({ name: z.string(), age: z.number() }, { partial: { name: true } });
+
+  // Make only `email` required, leaving other optional properties as-is
+  new ZodParams({ email: z.string().optional(), bio: z.string().optional() }, { required: { email: true } });
+  ```
+* Updated dev dependencies
+
 ## 3.3.1 (2023/6/22)
 
 * Minor documentation change to reflect that you can't use a `ReturnType` with classes, as you'd run into TS2052. Whoops.

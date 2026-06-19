@@ -33,9 +33,9 @@ export function mutateObject(
                 destination[i] = mutateObject(destination[i], value, false);
             });
         } else {
-            for (let i in source) {
-                if (source.hasOwnProperty(i)) {
-                    destination[i] = mutateObject(destination[i], source[i], false);
+            for (const i in source) {
+                if ((source as any).hasOwnProperty(i)) {
+                    (destination as any)[i] = mutateObject((destination as any)[i], (source as any)[i], false);
                 }
             }
         }
