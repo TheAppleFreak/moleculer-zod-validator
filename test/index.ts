@@ -142,6 +142,13 @@ const superRefineParams = new ZodParams(
     }
 );
 
+// https://github.com/TheAppleFreak/moleculer-zod-validator/issues/11
+// Best to double check that coercion actually works instead of just assuming
+// it does 🤷‍♀️
+const coerceParams = new ZodParams({
+    coercedNumberProp: z.coerce.number()
+});
+
 beforeAll(() => {
     broker = new ServiceBroker({
         validator: new ZodValidator(),
@@ -249,6 +256,12 @@ beforeAll(() => {
                 async handler(ctx: Context<typeof superRefineParams.context>) {
                     return ctx.params;
                 }
+            },
+            coerceParams: {
+                params: coerceParams.schema,
+                async handler(ctx: Context<typeof coerceParams.context>) {
+                    return ctx.params;
+                }
             }
         }
     });
@@ -323,12 +336,18 @@ describe("required modifier", () => {
             optionalStringProp: "also yes"
         });
 
-        expect(data).toEqual({ mandatoryStringProp: "yes", optionalStringProp: "also yes" });
+        expect(data).toEqual({
+            mandatoryStringProp: "yes",
+            optionalStringProp: "also yes"
+        });
     });
 
     test("required modifier (missing previously-optional property)", async () => {
         try {
-            await broker.call<typeof requiredParams.context, typeof requiredParams.call>(
+            await broker.call<
+                typeof requiredParams.context,
+                typeof requiredParams.call
+            >(
                 "test.requiredParams",
                 // @ts-expect-error - optionalStringProp is now required
                 { mandatoryStringProp: "yes" }
@@ -383,7 +402,10 @@ describe("selective modifiers", () => {
             // optionalNumberProp intentionally absent
         });
 
-        expect(data).toEqual({ optionalStringProp: "now required", mandatoryStringProp: "yes" });
+        expect(data).toEqual({
+            optionalStringProp: "now required",
+            mandatoryStringProp: "yes"
+        });
     });
 });
 
@@ -478,6 +500,33 @@ describe("modifiers", () => {
         expect(data).toEqual({
             stringPropLongerThan10Chars: "1234567890 is 10 chars"
         });
+    });
+
+    // I couldn't reproduce this issue myself, but it's worth testing for!
+    // https://github.com/TheAppleFreak/moleculer-zod-validator/issues/11
+    test("coerce modifier (string input)", async () => {
+        const data = await broker.call<
+            typeof coerceParams.context,
+            typeof coerceParams.call
+        >("test.coerceParams", {
+            coercedNumberProp: "42"
+        });
+
+        expect(data).toEqual({ coercedNumberProp: 42 });
+        expect(typeof data.coercedNumberProp).toBe("number");
+    });
+
+    test("coerce modifier (invalid input still rejected)", async () => {
+        try {
+            await broker.call<typeof coerceParams.context, typeof coerceParams.call>(
+                "test.coerceParams",
+                { coercedNumberProp: "not a number" }
+            );
+
+            throw new Error("Should not reach this point");
+        } catch (err) {
+            expect(err).toBeInstanceOf(Errors.ValidationError);
+        }
     });
 });
 
@@ -595,5 +644,24 @@ describe("calling internal services", () => {
         const res = await broker.call("$node.actions");
 
         expect(res).toBeTruthy();
+    });
+
+    test("$node.actions does not advertise internal ZodParams bookkeeping keys", async () => {
+        const res = await broker.call<
+            Array<{ name: string; action?: { params?: object } }>,
+            { withEndpoints: boolean }
+        >("$node.actions", { withEndpoints: false });
+
+        const oneParamAction = res.find((action) => action.name === "test.oneParam");
+        const params = oneParamAction?.action?.params;
+
+        // Object.keys/JSON.stringify are what introspection tools (and network
+        // transport) actually see. The internal options/check function are kept on
+        // symbol keys specifically so they're invisible here while still surviving
+        // Moleculer's cloneDeep - see src/symbols.ts.
+        expect(Object.keys(params ?? {})).toEqual(["stringProp"]);
+        expect(JSON.stringify(params)).not.toMatch(
+            /\$\$\$options|\$\$zodCheck|ZOD_PARAMS_OPTIONS|ZOD_PARAMS_CHECK|ZodParams\.options|ZodParams\.check/
+        );
     });
 });

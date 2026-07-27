@@ -7,6 +7,7 @@ const FastestValidator = require("fastest-validator");
 import type { ZodParamsOptionsType } from "./params";
 
 import { mutateObject } from "./helpers";
+import { ZOD_PARAMS_OPTIONS, ZOD_PARAMS_CHECK } from "./symbols";
 
 export class ZodValidator extends Validators.Base {
     public fvFallback;
@@ -22,13 +23,15 @@ export class ZodValidator extends Validators.Base {
     }
 
     compile(schema: Record<string, any>) {
-        // ZodParams.schema embeds a pre-compiled $$zodCheck function on the schema
-        // object. Moleculer's parseServiceSchema does _.cloneDeep(actionDef) before
-        // calling compile(), which destroys Zod schema objects (strips non-enumerable
-        // _zod, loses prototype chain). Lodash copies function references without
-        // deep-cloning, so $$zodCheck survives intact and we use it directly.
-        if (typeof schema.$$zodCheck === "function") {
-            return schema.$$zodCheck;
+        // ZodParams.schema embeds a pre-compiled check function on the schema object
+        // under a symbol key. Moleculer's parseServiceSchema does
+        // _.cloneDeep(actionDef) before calling compile(), which destroys Zod schema
+        // objects (strips non-enumerable _zod, loses prototype chain). Lodash
+        // preserves symbol-keyed properties and copies function references without
+        // deep-cloning, so the check function survives intact and we use it directly.
+        const zodCheck = (schema as ZodSchemaWithOptions)[ZOD_PARAMS_CHECK];
+        if (typeof zodCheck === "function") {
+            return zodCheck;
         }
         // Fallback: fastest-validator schema (used by Moleculer internal services)
         return this.fvFallback.compile(structuredClone(schema));
@@ -44,7 +47,11 @@ export class ZodValidator extends Validators.Base {
             ).length > 0
         ) {
             try {
-                const { $$$options: opts, $$zodCheck: _check, ...schema } = schemaWithOptions;
+                const {
+                    [ZOD_PARAMS_OPTIONS]: opts,
+                    [ZOD_PARAMS_CHECK]: _check,
+                    ...schema
+                } = schemaWithOptions;
 
                 let compiled;
 
@@ -58,13 +65,17 @@ export class ZodValidator extends Validators.Base {
 
                 if (opts.partial) {
                     compiled = compiled.partial(
-                        typeof opts.partial === "object" ? (opts.partial as any) : undefined
+                        typeof opts.partial === "object"
+                            ? (opts.partial as any)
+                            : undefined
                     );
                 }
 
                 if (opts.required) {
                     compiled = compiled.required(
-                        typeof opts.required === "object" ? (opts.required as any) : undefined
+                        typeof opts.required === "object"
+                            ? (opts.required as any)
+                            : undefined
                     );
                 }
 
@@ -124,6 +135,6 @@ export class ZodValidator extends Validators.Base {
 }
 
 type ZodSchemaWithOptions = Parameters<(typeof z)["object"]>[0] & {
-    $$$options: ZodParamsOptionsType;
-    $$zodCheck?: (params: unknown) => boolean;
+    [ZOD_PARAMS_OPTIONS]: ZodParamsOptionsType;
+    [ZOD_PARAMS_CHECK]?: (params: unknown) => boolean;
 };

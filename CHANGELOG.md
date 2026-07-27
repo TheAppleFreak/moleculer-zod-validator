@@ -24,8 +24,10 @@ It's been a while. With this update, the library is now compatible with Molecule
   // Make only `email` required, leaving other optional properties as-is
   new ZodParams({ email: z.string().optional(), bio: z.string().optional() }, { required: { email: true } });
   ```
-* Updated dev dependencies
+* The internal "bookkeeping" objects for the validator, such as the options object, no longer show up in the parameter list when running actions like `$node.actions`. This closes [Issue #10](https://github.com/TheAppleFreak/moleculer-zod-validator/issues/10).
+* Tests have been updated accordingly for all dependency upgrades. Also added a guard for [Issue #11](https://github.com/TheAppleFreak/moleculer-zod-validator/issues/11), which I couldn't reproduce but still wanted to test against in the worst case scenario.
 * Updated Zod links in README.md to point to the Zod v4 docs site
+* Updated dev dependencies
 * Updated the year in the license
 
 ## 3.3.1 (2023/6/22)

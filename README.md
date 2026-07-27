@@ -9,6 +9,8 @@ Validate Moleculer action parameters using the [Zod](https://github.com/colinhac
 * Supports [Moleculer](https://moleculer.services) v0.15.x
 * Supports [Zod](https://github.com/colinhacks/zod) v4.x.x
 
+If you're looking for a version that works with Moleculer 0.14.x and Zod 3.x.x, [check the 3.3.1 release](https://github.com/TheAppleFreak/moleculer-zod-validator/tree/v3.3.1).
+
 ## Requires
 
 As of v4.0.0, this package requires Node.js v22.0.0 or above.

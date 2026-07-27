@@ -35,7 +35,11 @@ export function mutateObject(
         } else {
             for (const i in source) {
                 if ((source as any).hasOwnProperty(i)) {
-                    (destination as any)[i] = mutateObject((destination as any)[i], (source as any)[i], false);
+                    (destination as any)[i] = mutateObject(
+                        (destination as any)[i],
+                        (source as any)[i],
+                        false
+                    );
                 }
             }
         }
