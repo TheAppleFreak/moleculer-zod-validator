@@ -25,6 +25,8 @@ It's been a while. With this update, the library is now compatible with Molecule
   new ZodParams({ email: z.string().optional(), bio: z.string().optional() }, { required: { email: true } });
   ```
 * Updated dev dependencies
+* Updated Zod links in README.md to point to the Zod v4 docs site
+* Updated the year in the license
 
 ## 3.3.1 (2023/6/22)
 
