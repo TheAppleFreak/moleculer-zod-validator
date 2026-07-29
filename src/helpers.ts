@@ -4,7 +4,7 @@
  * Adapted from this package: https://github.com/jeremyhewett/mutate-object
  * @param {object} destination - The object to mutate
  * @param {object} source - The object that the destination should be mutated to equal
- * @param {boolean} [preserveRootProps=true] - Whether undefined props on the root level should be deleted
+ * @param {boolean} [preserveRootProps=false] - Whether undefined props on the root level should be deleted
  */
 export function mutateObject(
     destination: any,

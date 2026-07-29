@@ -13,7 +13,7 @@ import type {
 } from "zod";
 
 /**
- * An adapter for a standard {@link https://github.com/colinhacks/zod#objects ZodObject},
+ * An adapter for a standard {@link https://zod.dev/api#objects ZodObject},
  * which can be easier to work with in Moleculer than Zod on its own.
  */
 export class ZodParams<
@@ -45,10 +45,10 @@ export class ZodParams<
      * Creates a new ZodParams adapter, which can be used to more easily provide typing
      * information to Moleculer services and calls.
      * @param {ZodRawShape} schema - The schema used in
-     * {@link https://github.com/colinhacks/zod#objects z.object()}.
+     * {@link https://zod.dev/api#objects z.object()}.
      * @param {ZodParamsOptionsType} options - This exposes several methods available
      * on the ZodObject type,
-     * {@link https://github.com/colinhacks/zod#table-of-contents all of which can be referenced under the Objects section in the Zod documentation}.
+     * {@link https://zod.dev/api all of which can be referenced under the Objects section in the Zod documentation}.
      * @param {any} returnType - The return type of the action in question. This does
      * nothing at runtime and is used purely for storing a type on the object that can
      * then be referenced later on. This can be done like so:

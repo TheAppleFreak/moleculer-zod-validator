@@ -2,7 +2,7 @@
 
 (all dates use the ISO-8601 format, which is YYYY/MM/DD)
 
-## 4.0.0 (TBD)
+## 4.0.0 (2026/07/29)
 
 It's been a while. With this update, the library is now compatible with Moleculer 0.15 and Zod 4, though there's a lot of breaking changes as a result of the larger changes in Zod. 
 
