@@ -1,21 +1,24 @@
 name: Deploy
 
-on: 
+on:
   release:
-    types: [ created ]
+    types: [ published ]
+
+permissions:
+  id-token: write  # Required for OIDC
+  contents: read
 
 jobs:
-  deploy: 
+  deploy:
     runs-on: ubuntu-latest
 
-    steps: 
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with: 
-          node-version: "17.x"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22.x"
           registry-url: "https://registry.npmjs.org"
       - run: npm ci
       - run: npm run build
+      - run: npm test
       - run: npm publish
-        env: 
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

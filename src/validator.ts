@@ -7,36 +7,34 @@ const FastestValidator = require("fastest-validator");
 import type { ZodParamsOptionsType } from "./params";
 
 import { mutateObject } from "./helpers";
+import { ZOD_PARAMS_OPTIONS, ZOD_PARAMS_CHECK } from "./symbols";
 
 export class ZodValidator extends Validators.Base {
     public fvFallback;
 
     constructor() {
-        super();
+        super({});
 
         this.fvFallback = new FastestValidator();
     }
 
-    compile(schema: ZodSchemaWithOptions) {
-        // There's an issue in Moleculer 0.14.x where the internal services like
-        // $node.services use fastest-validator configuration and can't be changed.
-        // Since the schema used for this validator is an object with all functions
-        // (vs an object with strings/numbers/booleans) we can check for the existence
-        // of the Zod _def property
-        // Not super elegant, but hey, if it keeps Moleculer from crashing...
-        // ¯\_(ツ)_/¯
-        if (
-            // _def exists on all ZodType objects and should be a good litmus test
-            Object.keys(schema).filter((key) => schema[key].hasOwnProperty("_def"))
-                .length > 0
-        ) {
-            return (params: unknown) => this.validate(params, schema);
-        } else {
-            // This is based on Moleculer's fastest.js validator
-            // TODO: Why does this crash with cloneDeep?
-            // return this.fvFallback.compile(_.cloneDeep(schema));
-            return this.fvFallback.compile(structuredClone(schema));
+    convertSchemaToMoleculer(schema: any): Record<string, any> {
+        return schema;
+    }
+
+    compile(schema: Record<string, any>) {
+        // ZodParams.schema embeds a pre-compiled check function on the schema object
+        // under a symbol key. Moleculer's parseServiceSchema does
+        // _.cloneDeep(actionDef) before calling compile(), which destroys Zod schema
+        // objects (strips non-enumerable _zod, loses prototype chain). Lodash
+        // preserves symbol-keyed properties and copies function references without
+        // deep-cloning, so the check function survives intact and we use it directly.
+        const zodCheck = (schema as ZodSchemaWithOptions)[ZOD_PARAMS_CHECK];
+        if (typeof zodCheck === "function") {
+            return zodCheck;
         }
+        // Fallback: fastest-validator schema (used by Moleculer internal services)
+        return this.fvFallback.compile(structuredClone(schema));
     }
 
     validate(params: unknown, schemaWithOptions: ZodSchemaWithOptions): boolean {
@@ -45,28 +43,40 @@ export class ZodValidator extends Validators.Base {
         // as in compile().
         if (
             Object.keys(schemaWithOptions).filter((key) =>
-                schemaWithOptions[key].hasOwnProperty("_def")
+                schemaWithOptions[key].hasOwnProperty("_zod")
             ).length > 0
         ) {
             try {
-                const { $$$options: opts, ...schema } = schemaWithOptions;
+                const {
+                    [ZOD_PARAMS_OPTIONS]: opts,
+                    [ZOD_PARAMS_CHECK]: _check,
+                    ...schema
+                } = schemaWithOptions;
 
                 let compiled;
 
-                if (opts.strip) {
-                    compiled = z.object(schema).strip();
-                } else if (opts.strict) {
+                if (opts.strictObject) {
                     compiled = z.object(schema).strict();
-                } else if (opts.passthrough) {
+                } else if (opts.looseObject) {
                     compiled = z.object(schema).passthrough();
                 } else {
                     compiled = z.object(schema);
                 }
 
                 if (opts.partial) {
-                    compiled = compiled.partial();
-                } else if (opts.deepPartial) {
-                    compiled = compiled.deepPartial();
+                    compiled = compiled.partial(
+                        typeof opts.partial === "object"
+                            ? (opts.partial as any)
+                            : undefined
+                    );
+                }
+
+                if (opts.required) {
+                    compiled = compiled.required(
+                        typeof opts.required === "object"
+                            ? (opts.required as any)
+                            : undefined
+                    );
                 }
 
                 if (opts.catchall) {
@@ -125,5 +135,6 @@ export class ZodValidator extends Validators.Base {
 }
 
 type ZodSchemaWithOptions = Parameters<(typeof z)["object"]>[0] & {
-    $$$options: ZodParamsOptionsType;
+    [ZOD_PARAMS_OPTIONS]: ZodParamsOptionsType;
+    [ZOD_PARAMS_CHECK]?: (params: unknown) => boolean;
 };

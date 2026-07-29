@@ -4,7 +4,7 @@
  * Adapted from this package: https://github.com/jeremyhewett/mutate-object
  * @param {object} destination - The object to mutate
  * @param {object} source - The object that the destination should be mutated to equal
- * @param {boolean} [preserveRootProps=true] - Whether undefined props on the root level should be deleted
+ * @param {boolean} [preserveRootProps=false] - Whether undefined props on the root level should be deleted
  */
 export function mutateObject(
     destination: any,
@@ -33,9 +33,13 @@ export function mutateObject(
                 destination[i] = mutateObject(destination[i], value, false);
             });
         } else {
-            for (let i in source) {
-                if (source.hasOwnProperty(i)) {
-                    destination[i] = mutateObject(destination[i], source[i], false);
+            for (const i in source) {
+                if ((source as any).hasOwnProperty(i)) {
+                    (destination as any)[i] = mutateObject(
+                        (destination as any)[i],
+                        (source as any)[i],
+                        false
+                    );
                 }
             }
         }

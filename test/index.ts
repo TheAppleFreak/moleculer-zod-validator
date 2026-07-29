@@ -17,6 +17,38 @@ const optionalParam = new ZodParams({
     mandatoryStringProp: z.string()
 });
 
+const selectivePartialParams = new ZodParams(
+    {
+        stringProp: z.string(),
+        numberProp: z.number(),
+        booleanProp: z.boolean()
+    },
+    {
+        partial: { stringProp: true }
+    }
+);
+
+const selectiveRequiredParams = new ZodParams(
+    {
+        optionalStringProp: z.string().optional(),
+        optionalNumberProp: z.number().optional(),
+        mandatoryStringProp: z.string()
+    },
+    {
+        required: { optionalStringProp: true }
+    }
+);
+
+const requiredParams = new ZodParams(
+    {
+        optionalStringProp: z.string().optional(),
+        mandatoryStringProp: z.string()
+    },
+    {
+        required: true
+    }
+);
+
 const partialParams = new ZodParams(
     {
         stringProp: z.string(),
@@ -30,25 +62,12 @@ const partialParams = new ZodParams(
         partial: true
     }
 );
-const deepPartialParams = new ZodParams(
-    {
-        stringProp: z.string(),
-        numberProp: z.number(),
-        objectProp: z.object({
-            nestedStringProp: z.string(),
-            nestedNumber: z.number()
-        })
-    },
-    {
-        deepPartial: true
-    }
-);
 const strictParams = new ZodParams(
     {
         stringProp: z.string()
     },
     {
-        strict: true
+        strictObject: true
     }
 );
 const passthroughParams = new ZodParams(
@@ -56,16 +75,7 @@ const passthroughParams = new ZodParams(
         stringProp: z.string()
     },
     {
-        passthrough: true
-    }
-);
-const stripParams = new ZodParams(
-    {
-        stringProp: z.string()
-    },
-    {
-        passthrough: true,
-        strip: true // should override passthrough
+        looseObject: true
     }
 );
 
@@ -120,8 +130,8 @@ const superRefineParams = new ZodParams(
         superRefine(arg, ctx) {
             if (arg.stringPropLongerThan10Chars.length < 10) {
                 ctx.addIssue({
-                    type: "string",
-                    code: z.ZodIssueCode.too_small,
+                    code: "too_small",
+                    origin: "string",
                     minimum: 10,
                     inclusive: true,
                     exact: false,
@@ -131,6 +141,13 @@ const superRefineParams = new ZodParams(
         }
     }
 );
+
+// https://github.com/TheAppleFreak/moleculer-zod-validator/issues/11
+// Best to double check that coercion actually works instead of just assuming
+// it does 🤷‍♀️
+const coerceParams = new ZodParams({
+    coercedNumberProp: z.coerce.number()
+});
 
 beforeAll(() => {
     broker = new ServiceBroker({
@@ -172,15 +189,27 @@ beforeAll(() => {
                     return ctx.params;
                 }
             },
-            partialParams: {
-                params: partialParams.schema,
-                async handler(ctx: Context<typeof partialParams.context>) {
+            selectivePartialParams: {
+                params: selectivePartialParams.schema,
+                async handler(ctx: Context<typeof selectivePartialParams.context>) {
                     return ctx.params;
                 }
             },
-            deepPartialParams: {
-                params: deepPartialParams.schema,
-                async handler(ctx: Context<typeof deepPartialParams.context>) {
+            selectiveRequiredParams: {
+                params: selectiveRequiredParams.schema,
+                async handler(ctx: Context<typeof selectiveRequiredParams.context>) {
+                    return ctx.params;
+                }
+            },
+            requiredParams: {
+                params: requiredParams.schema,
+                async handler(ctx: Context<typeof requiredParams.context>) {
+                    return ctx.params;
+                }
+            },
+            partialParams: {
+                params: partialParams.schema,
+                async handler(ctx: Context<typeof partialParams.context>) {
                     return ctx.params;
                 }
             },
@@ -193,12 +222,6 @@ beforeAll(() => {
             passthroughParams: {
                 params: passthroughParams.schema,
                 async handler(ctx: Context<typeof passthroughParams.context>) {
-                    return ctx.params;
-                }
-            },
-            stripParams: {
-                params: stripParams.schema,
-                async handler(ctx: Context<typeof stripParams.context>) {
                     return ctx.params;
                 }
             },
@@ -231,6 +254,12 @@ beforeAll(() => {
             superRefineParams: {
                 params: superRefineParams.schema,
                 async handler(ctx: Context<typeof superRefineParams.context>) {
+                    return ctx.params;
+                }
+            },
+            coerceParams: {
+                params: coerceParams.schema,
+                async handler(ctx: Context<typeof coerceParams.context>) {
                     return ctx.params;
                 }
             }
@@ -297,6 +326,89 @@ describe("valid parameters", () => {
     });
 });
 
+describe("required modifier", () => {
+    test("required modifier (with all required properties)", async () => {
+        const data = await broker.call<
+            typeof requiredParams.context,
+            typeof requiredParams.call
+        >("test.requiredParams", {
+            mandatoryStringProp: "yes",
+            optionalStringProp: "also yes"
+        });
+
+        expect(data).toEqual({
+            mandatoryStringProp: "yes",
+            optionalStringProp: "also yes"
+        });
+    });
+
+    test("required modifier (missing previously-optional property)", async () => {
+        try {
+            await broker.call<
+                typeof requiredParams.context,
+                typeof requiredParams.call
+            >(
+                "test.requiredParams",
+                // @ts-expect-error - optionalStringProp is now required
+                { mandatoryStringProp: "yes" }
+            );
+        } catch (err) {
+            expect(err).toBeInstanceOf(Errors.ValidationError);
+        }
+    });
+});
+
+describe("selective modifiers", () => {
+    test("selective partial (omitting the partial-ized property)", async () => {
+        const data = await broker.call<
+            typeof selectivePartialParams.context,
+            typeof selectivePartialParams.call
+        >("test.selectivePartialParams", { numberProp: 42, booleanProp: true });
+
+        expect(data).toEqual({ numberProp: 42, booleanProp: true });
+    });
+
+    test("selective partial (still requires non-partial-ized properties)", async () => {
+        try {
+            await broker.call<
+                typeof selectivePartialParams.context,
+                typeof selectivePartialParams.call
+                // @ts-expect-error - numberProp and booleanProp are still required
+            >("test.selectivePartialParams", { stringProp: "yes" });
+        } catch (err) {
+            expect(err).toBeInstanceOf(Errors.ValidationError);
+        }
+    });
+
+    test("selective required (requires the newly-required property)", async () => {
+        try {
+            await broker.call<
+                typeof selectiveRequiredParams.context,
+                typeof selectiveRequiredParams.call
+                // @ts-expect-error - optionalStringProp is now required
+            >("test.selectiveRequiredParams", { mandatoryStringProp: "yes" });
+        } catch (err) {
+            expect(err).toBeInstanceOf(Errors.ValidationError);
+        }
+    });
+
+    test("selective required (still allows other optional properties to be absent)", async () => {
+        const data = await broker.call<
+            typeof selectiveRequiredParams.context,
+            typeof selectiveRequiredParams.call
+        >("test.selectiveRequiredParams", {
+            optionalStringProp: "now required",
+            mandatoryStringProp: "yes"
+            // optionalNumberProp intentionally absent
+        });
+
+        expect(data).toEqual({
+            optionalStringProp: "now required",
+            mandatoryStringProp: "yes"
+        });
+    });
+});
+
 describe("modifiers", () => {
     test("partial modifier", async () => {
         const data = await broker.call<
@@ -305,19 +417,6 @@ describe("modifiers", () => {
         >("test.partialParams", {});
 
         expect(data).toEqual({});
-    });
-
-    test("deep partial modifier", async () => {
-        const data = await broker.call<
-            typeof deepPartialParams.context,
-            typeof deepPartialParams.call
-        >("test.deepPartialParams", {
-            objectProp: {
-                nestedStringProp: "yes"
-            }
-        });
-
-        expect(data).toEqual({ objectProp: { nestedStringProp: "yes" } });
     });
 
     // This invokes an upstream bug with type inferences
@@ -402,6 +501,33 @@ describe("modifiers", () => {
             stringPropLongerThan10Chars: "1234567890 is 10 chars"
         });
     });
+
+    // I couldn't reproduce this issue myself, but it's worth testing for!
+    // https://github.com/TheAppleFreak/moleculer-zod-validator/issues/11
+    test("coerce modifier (string input)", async () => {
+        const data = await broker.call<
+            typeof coerceParams.context,
+            typeof coerceParams.call
+        >("test.coerceParams", {
+            coercedNumberProp: "42"
+        });
+
+        expect(data).toEqual({ coercedNumberProp: 42 });
+        expect(typeof data.coercedNumberProp).toBe("number");
+    });
+
+    test("coerce modifier (invalid input still rejected)", async () => {
+        try {
+            await broker.call<typeof coerceParams.context, typeof coerceParams.call>(
+                "test.coerceParams",
+                { coercedNumberProp: "not a number" }
+            );
+
+            throw new Error("Should not reach this point");
+        } catch (err) {
+            expect(err).toBeInstanceOf(Errors.ValidationError);
+        }
+    });
 });
 
 describe("unrecognized parameters", () => {
@@ -439,20 +565,7 @@ describe("unrecognized parameters", () => {
         expect(data).toEqual({ stringProp: "yes", unrecognizedParam: null });
     });
 
-    test("calling stripParams with unrecognized parameters", async () => {
-        const data = await broker.call<
-            typeof stripParams.context,
-            typeof stripParams.call
-        >("test.stripParams", {
-            stringProp: "yes",
-            // @ts-ignore
-            unrecognizedParam: null
-        });
-
-        expect(data).toEqual({ stringProp: "yes" });
-    });
-
-    test("unrecognized parameters with strict: true", async () => {
+    test("unrecognized parameters with strictObject: true", async () => {
         try {
             await broker.call<typeof strictParams.context, typeof strictParams.call>(
                 "test.strictParams",
@@ -531,5 +644,24 @@ describe("calling internal services", () => {
         const res = await broker.call("$node.actions");
 
         expect(res).toBeTruthy();
+    });
+
+    test("$node.actions does not advertise internal ZodParams bookkeeping keys", async () => {
+        const res = await broker.call<
+            Array<{ name: string; action?: { params?: object } }>,
+            { withEndpoints: boolean }
+        >("$node.actions", { withEndpoints: false });
+
+        const oneParamAction = res.find((action) => action.name === "test.oneParam");
+        const params = oneParamAction?.action?.params;
+
+        // Object.keys/JSON.stringify are what introspection tools (and network
+        // transport) actually see. The internal options/check function are kept on
+        // symbol keys specifically so they're invisible here while still surviving
+        // Moleculer's cloneDeep - see src/symbols.ts.
+        expect(Object.keys(params ?? {})).toEqual(["stringProp"]);
+        expect(JSON.stringify(params)).not.toMatch(
+            /\$\$\$options|\$\$zodCheck|ZOD_PARAMS_OPTIONS|ZOD_PARAMS_CHECK|ZodParams\.options|ZodParams\.check/
+        );
     });
 });

@@ -1,20 +1,22 @@
 {
     "compilerOptions": {
-        "target": "ES2021",
+        "target": "es2025",
         "module": "commonjs",
+        "moduleResolution": "node10",
+        "ignoreDeprecations": "6.0",
         "allowJs": false,
         "declaration": true,
         "sourceMap": false,
-        "moduleResolution": "node",
         "strict": true,
         "noImplicitAny": true,
         "experimentalDecorators": true,
         "emitDecoratorMetadata": true,
         "allowSyntheticDefaultImports": true,
         "resolveJsonModule": true,
+        "skipLibCheck": true,
+        "types": ["node"],
 		"outDir": "./build",
-		"rootDir": "./src",
-		"baseUrl": "./src"
+		"rootDir": "./src"
     },
 	"include": [
 		"src/**/*.ts"

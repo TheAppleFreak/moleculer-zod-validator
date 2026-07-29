@@ -6,12 +6,10 @@ Validate Moleculer action parameters using the [Zod](https://github.com/colinhac
 
 ## Supports
 
-* Supports [Moleculer](https://moleculer.services) v0.14.x
-* Supports [Zod](https://github.com/colinhacks/zod) v3.x.x
+* Supports [Moleculer](https://moleculer.services) v0.15.x
+* Supports [Zod](https://github.com/colinhacks/zod) v4.x.x
 
-## Requires
-
-As of v3.0.0, this package requires Node.js v17.0.0 or above.
+If you're looking for a version that works with Moleculer 0.14.x and Zod 3.x.x, [check the 3.3.1 release](https://github.com/TheAppleFreak/moleculer-zod-validator/tree/v3.3.1).
 
 ## Install
 
@@ -37,7 +35,7 @@ const broker = new ServiceBroker({
 });
 ```
 
-As of v3.0.0, moleculer-zod-validator implements the default Moleculer validator (fastest-validator) as a compatibility fallback for fastest-validator schemas, [like those used in Moleculer's internal services](https://github.com/moleculerjs/moleculer/issues/1094), so calling services using that should not be a problem. 
+moleculer-zod-validator implements the default Moleculer validator (fastest-validator) as a compatibility fallback for fastest-validator schemas, [like those used in Moleculer's internal services](https://github.com/moleculerjs/moleculer/issues/1094), so calling services using that should not be a problem. 
 
 ### Actions
 
@@ -45,14 +43,13 @@ One of Zod's main features is how it can infer TypeScript types from a schema. T
 
 The `ZodParams` constructor takes one to three arguments: `schema`, optionally `options`, and optionally `returnValue`.
 
-* `schema` - This is a schema object that gets passed directly into `z.object`. [For all available schema options, please look at the Zod documentation.](https://github.com/colinhacks/zod#defining-schemas)
-* `options` - This provides access to some of the different functions available on a standard Zod object. All booleans default to `false` except for `strip`, which is implicitly set to `true`.
-  * `partial` (boolean) - Shallowly makes all properties optional. ([docs](https://github.com/colinhacks/zod#partial))
-  * `deepPartial` (boolean) - Deeply makes all properties optional. ([docs](https://github.com/colinhacks/zod#deepPartial))
-  * `strip` (boolean) - Removes unrecognized keys from the parsed input. This is Zod's default behavior and this validator's default behavior. Mutually exclusive with `passthrough` and `strict`, and will override them if set. ([docs](https://github.com/colinhacks/zod#strip))
-  * `passthrough` (boolean) - Passes through unrecognized keys. Mutually exclusive with `strict` and `strip`. ([docs](https://github.com/colinhacks/zod#passthrough))
-  * `strict` (boolean) - Throws an error if unrecognized keys are present. Mutually exclusive with `passthrough` and `strip`. ([docs](https://github.com/colinhacks/zod#strict))
-  * `catchall` (Zod validator) - Validates all unknown keys against this schema. Obviates `strict`, `passthrough`, and `strip`. ([docs](https://github.com/colinhacks/zod#catchall))
+* `schema` - This is a schema object that gets passed directly into `z.object`. [For all available schema options, please look at the Zod documentation.](https://zod.dev)
+* `options` - This provides access to some of the different functions available on a standard Zod object. All booleans default to `false`.
+  * `partial` (boolean OR mask object) - Shallowly makes properties optional. Pass `true` to make all properties optional, or a mask object to target specific properties (e.g. `{ partial: { name: true } }`). Mutually exclusive with `required`. ([docs](https://zod.dev/api?id=refine#partial))
+  * `required` (boolean OR mask object) - Makes properties required, removing any `.optional()` wrappers. Pass `true` to affect all properties, or a mask object to target specific properties (e.g. `{ required: { name: true } }`). Mutually exclusive with `partial`. ([docs](https://zod.dev/api?id=required#required))
+  * `looseObject` (boolean) - Passes through unrecognized keys. Mutually exclusive with `strictObject`. Mirrors `z.looseObject()`. ([docs](https://zod.dev/api?id=required#zlooseobject))
+  * `strictObject` (boolean) - Throws an error if unrecognized keys are present. Mutually exclusive with `looseObject`. Mirrors `z.strictObject()`. ([docs](https://zod.dev/api?id=required#zstrictobject))
+  * `catchall` (Zod validator) - Validates all unknown keys against this schema. Obviates `looseObject` and `strictObject`. ([docs](https://zod.dev/api?id=catchall#catchall))
 
     **NOTE**: [There is currently an upstream bug in Zod that prevents `catchall` type inference from working correctly.](https://github.com/colinhacks/zod/issues/1949) Type inference for catchall in ZodParams is disabled for the time being until that is fixed. If you wish to emulate the type inference, you can do so by using a type union when using `broker.call` or `ctx.call`. 
 
@@ -62,16 +59,16 @@ The `ZodParams` constructor takes one to three arguments: `schema`, optionally `
         typeof zodParamObject.call & {[index: string]: string}
     >({ ... })
     ```
-  * `refine` (function OR object) - Adds custom validation logic to the Zod object that can't be represented in TypeScript's type system or purely using Zod validators on their own (for example, making sure that at least one of several optional items are present). Returning any falsy value will fail validation, while returning any truthy value will pass validation. ([docs](https://github.com/colinhacks/zod/#refine))
+  * `refine` (function OR object) - Adds custom validation logic to the Zod object that can't be represented in TypeScript's type system or purely using Zod validators on their own (for example, making sure that at least one of several optional items are present). Returning any falsy value will fail validation, while returning any truthy value will pass validation. ([docs](https://zod.dev/api?id=refine#refine))
 
     There are two ways to use this property. You can either pass in a validation function taking one parameter (representing the object being passed in) or an object with optionally two properties.
 
       * `validator` (function) - A validation function taking one parameter, representing the object being validated currently.
-      * `params` (object, optional) - Additional properties to customize the error handling behavior, [as described in the Zod documentation](https://github.com/colinhacks/zod/#arguments)
+      * `params` (object, optional) - Additional properties to customize the error handling behavior, [as described in the Zod documentation](https://zod.dev/api?id=refine#refine)
     
     If both `refine` and `superRefine` are defined, `refine` will run last (after `superRefine`).
 
-  * `superRefine` (function) - Adds custom validation logic to the Zod object that can't be represented in TypeScript's type system or purely using Zod validators on their own (for example, making sure that at least one of several optional items are present). This is a more powerful and verbose method of performing refinements. Validation will pass unless `ctx.addIssue` is called. ([docs](https://github.com/colinhacks/zod/#superrefine))
+  * `superRefine` (function) - Adds custom validation logic to the Zod object that can't be represented in TypeScript's type system or purely using Zod validators on their own (for example, making sure that at least one of several optional items are present). This is a more powerful and verbose method of performing refinements. Validation will pass unless `ctx.addIssue` is called. ([docs](https://zod.dev/api?id=refine#superrefine))
 
     This property takes a function with two arguments, `val` and `ctx` (not to be confused with Moleculer's `ctx` option).
     
@@ -90,7 +87,7 @@ The `ZodParams` constructor takes one to three arguments: `schema`, optionally `
   // type of returnedValue is Promise<string>
   ```
 
-Additionally, support for object transformations is present, allowing for the use of features such as [preprocessing](https://github.com/colinhacks/zod#preprocess), [refinements](https://github.com/colinhacks/zod#refine), [transforms](https://github.com/colinhacks/zod#transform), and [defaults](https://github.com/colinhacks/zod#default). 
+Additionally, support for object transformations is present, allowing for the use of features such as [preprocessing](https://zod.dev/api?id=preprocess#preprocess), [refinements](https://zod.dev/api?id=refinements#refinements), [transforms](https://zod.dev/api?id=transforms#transforms), and [defaults](https://zod.dev/api?id=defaults#defaults). 
 
 Once constructed, there are five properties exposed on the `ZodParams` object.
 
@@ -118,7 +115,7 @@ const complexValidator = new ZodParams({
 }, {
     partial: true,
     catchall: z.number()
-}});
+});
 
 broker.createService({
     name: "example",
@@ -129,7 +126,7 @@ broker.createService({
         },
         complexExample: {
             params: complexValidator.schema,
-            handler(ctx: Context<typeof complexExample.context>) { ... }
+            handler(ctx: Context<typeof complexValidator.context>) { ... }
         }
     }
 });
