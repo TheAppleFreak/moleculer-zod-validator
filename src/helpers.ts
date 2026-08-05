@@ -51,7 +51,14 @@ export function mutateObject(
 }
 
 function isEnumerable(value: unknown) {
-    return value !== null && typeof value === "object";
+    if (value === null || typeof value !== "object") return false;
+    if (Array.isArray(value)) return true;
+
+    // Only plain objects can be enumerated properly. Anything else, like dates,
+    // classes, and so on, will get mangled otherwise and get copied as {} which
+    // isn't desirable. This ensures that those objects are copied by reference.
+    const proto = Object.getPrototypeOf(value);
+    return proto === Object.prototype || proto === null;
 }
 
 function cleanArray(oldArray: any[], newArray: any[]) {

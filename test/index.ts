@@ -149,6 +149,12 @@ const coerceParams = new ZodParams({
     coercedNumberProp: z.coerce.number()
 });
 
+// Coercions that produce a non-plain object (Date, Map, Set, ...) were being
+// mangled by mutateObject on the way back out - see helpers.ts's isEnumerable.
+const coerceDateParams = new ZodParams({
+    coercedDateProp: z.coerce.date()
+});
+
 beforeAll(() => {
     broker = new ServiceBroker({
         validator: new ZodValidator(),
@@ -260,6 +266,12 @@ beforeAll(() => {
             coerceParams: {
                 params: coerceParams.schema,
                 async handler(ctx: Context<typeof coerceParams.context>) {
+                    return ctx.params;
+                }
+            },
+            coerceDateParams: {
+                params: coerceDateParams.schema,
+                async handler(ctx: Context<typeof coerceDateParams.context>) {
                     return ctx.params;
                 }
             }
@@ -527,6 +539,20 @@ describe("modifiers", () => {
         } catch (err) {
             expect(err).toBeInstanceOf(Errors.ValidationError);
         }
+    });
+
+    test("coerce modifier (string input, non-plain object output)", async () => {
+        const isoString = "2024-01-15T00:00:00.000Z";
+
+        const data = await broker.call<
+            typeof coerceDateParams.context,
+            typeof coerceDateParams.call
+        >("test.coerceDateParams", {
+            coercedDateProp: isoString
+        });
+
+        expect(data.coercedDateProp).toBeInstanceOf(Date);
+        expect((data.coercedDateProp as Date).toISOString()).toBe(isoString);
     });
 });
 

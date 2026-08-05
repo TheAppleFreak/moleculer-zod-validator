@@ -2,6 +2,12 @@
 
 (all dates use the ISO-8601 format, which is YYYY/MM/DD)
 
+## 4.0.1 (2026/8/5)
+
+* Fixed a bug in `mutateObject` that would improperly replace complex objects (notably Dates, BigInts, and so on) with `{}` at runtime, as well as adding a regression test for it. This should hopefully fix [Issue #11](https://github.com/TheAppleFreak/moleculer-zod-validator/issues/11) for real this time. 
+* Removed strict engine check in package.json, since the engine requirements are instead forced by Moleculer 0.15's package.json. No need to have two redundant checks in this case.
+* Updated lockfile so NPM would stop yelling at me about a security vulnerability.
+
 ## 4.0.0 (2026/07/29)
 
 It's been a while. With this update, the library is now compatible with Moleculer 0.15 and Zod 4, though there's a lot of breaking changes as a result of the larger changes in Zod. 
