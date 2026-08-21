@@ -155,6 +155,13 @@ const coerceDateParams = new ZodParams({
     coercedDateProp: z.coerce.date()
 });
 
+// Regression check for a bug where a failed validation threw synchronously
+// instead of rejecting a promise, breaking the bulkhead feature and 
+// permanently consuming that bulkhead slot. 
+const bulkheadParams = new ZodParams({
+    stringProp: z.string()
+});
+
 beforeAll(() => {
     broker = new ServiceBroker({
         validator: new ZodValidator(),
@@ -272,6 +279,16 @@ beforeAll(() => {
             coerceDateParams: {
                 params: coerceDateParams.schema,
                 async handler(ctx: Context<typeof coerceDateParams.context>) {
+                    return ctx.params;
+                }
+            },
+            bulkheadParams: {
+                params: bulkheadParams.schema,
+                bulkhead: {
+                    enabled: true,
+                    concurrency: 1
+                },
+                async handler(ctx: Context<typeof bulkheadParams.context>) {
                     return ctx.params;
                 }
             }
@@ -690,4 +707,21 @@ describe("calling internal services", () => {
             /\$\$\$options|\$\$zodCheck|ZOD_PARAMS_OPTIONS|ZOD_PARAMS_CHECK|ZodParams\.options|ZodParams\.check/
         );
     });
+});
+
+describe("bulkhead slot release on validation failure", () => {
+    test("a failed validation doesn't permanently consume the bulkhead slot", async () => {
+        // Previously the compiled check function threw synchronously on a failed
+        // validation. Moleculer's bulkhead feature expected async throws and would
+        // lock the slot permanently until the process restarted.
+        await expect(
+            broker.call("test.bulkheadParams", {})
+        ).rejects.toBeInstanceOf(Errors.ValidationError);
+
+        // With concurrency: 1, if the previous call had leaked its slot this call would
+        // queue forever and time out instead of resolving.
+        const res = await broker.call("test.bulkheadParams", { stringProp: "hello" });
+
+        expect(res).toEqual({ stringProp: "hello" });
+    }, 2000);
 });

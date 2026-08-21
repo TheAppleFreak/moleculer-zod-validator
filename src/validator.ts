@@ -136,5 +136,5 @@ export class ZodValidator extends Validators.Base {
 
 type ZodSchemaWithOptions = Parameters<(typeof z)["object"]>[0] & {
     [ZOD_PARAMS_OPTIONS]: ZodParamsOptionsType;
-    [ZOD_PARAMS_CHECK]?: (params: unknown) => boolean;
+    [ZOD_PARAMS_CHECK]?: (params: unknown) => Promise<boolean>;
 };

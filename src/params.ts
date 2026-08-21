@@ -24,7 +24,7 @@ export class ZodParams<
     private _rawSchema: ZPSchema;
     private _rawSchemaWithOptions!: ZPSchema & {
         [ZOD_PARAMS_OPTIONS]: z.infer<typeof ZodParamsOptions>;
-        [ZOD_PARAMS_CHECK]: (params: unknown) => boolean;
+        [ZOD_PARAMS_CHECK]: (params: unknown) => Promise<boolean>;
     };
 
     /** This property is purely for type inference and should not be used. */
@@ -138,7 +138,7 @@ export class ZodParams<
         // properties) without showing up as bogus params in introspection tools
         // like `$node.actions`, which only enumerate string keys.
         const validator = this._validator;
-        const zodCheck = function (params: unknown): boolean {
+        const zodCheck = async function (params: unknown): Promise<boolean> {
             try {
                 const results = validator.parse(params);
                 mutateObject(params, results, false);
@@ -154,6 +154,7 @@ export class ZodParams<
             }
         };
 
+        zodCheck.async = true;
         this._rawSchemaWithOptions = Object.assign({}, schema, {
             [ZOD_PARAMS_OPTIONS]: opts,
             [ZOD_PARAMS_CHECK]: zodCheck

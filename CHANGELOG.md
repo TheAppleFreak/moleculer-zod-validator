@@ -2,6 +2,11 @@
 
 (all dates use the ISO-8601 format, which is YYYY/MM/DD)
 
+## 4.0.2 (2026/8/20)
+
+* Fixed a bug in `params.ts` where validation errors were thrown synchronously where Moleculer expected them to throw asynchronously. When used with the bulkhead feature, validation failures would never settle and the bulkhead slots would be permanently filled until the process restarted. That shouldn't happen anymore. 
+* Added a regression test for that bug
+
 ## 4.0.1 (2026/8/5)
 
 * Fixed a bug in `mutateObject` that would improperly replace complex objects (notably Dates, BigInts, and so on) with `{}` at runtime, as well as adding a regression test for it. This should hopefully fix [Issue #11](https://github.com/TheAppleFreak/moleculer-zod-validator/issues/11) for real this time. 
