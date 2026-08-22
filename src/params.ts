@@ -248,7 +248,21 @@ const ZodParamsOptions = z
             z.function(),
             z.object({
                 validator: z.function(),
-                params: z.object({}).loose().optional()
+                params: z
+                    .union([
+                        z.string(),
+                        z
+                            .object({
+                                error: z.union([z.string(), z.function()]).optional(),
+                                message: z.string().optional(),
+                                path: z
+                                    .array(z.union([z.string(), z.number()]))
+                                    .optional(),
+                                params: z.record(z.string(), z.unknown()).optional()
+                            })
+                            .loose()
+                    ])
+                    .optional()
             })
         ]),
         superRefine: z.function()
@@ -259,6 +273,8 @@ type RefineValidator = (val: any) => unknown | Promise<unknown>;
 type RefineParams =
     | string
     | {
+          error?: string | ((issue: any) => { message: string } | string | undefined | null);
+          /** @deprecated Use `error` instead. */
           message?: string;
           path?: (string | number)[];
           params?: Record<string, unknown>;

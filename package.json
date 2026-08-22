@@ -1,6 +1,6 @@
 {
   "name": "moleculer-zod-validator",
-  "version": "4.0.2",
+  "version": "4.0.3",
   "description": "A validator for the Moleculer microservice framework to allow the use of Zod.",
   "author": "TheAppleFreak <TheAppleFreak@gmail.com>",
   "main": "build/index.js",

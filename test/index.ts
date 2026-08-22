@@ -122,6 +122,18 @@ const refineParamsUsingObjectAndParams = new ZodParams(
     }
 );
 
+const refineParamsUsingObjectAndStringParams = new ZodParams(
+    {
+        stringPropLongerThan10Chars: z.string()
+    },
+    {
+        refine: {
+            validator: (val) => val.stringPropLongerThan10Chars.length > 10,
+            params: "String is less than 10 characters long"
+        }
+    }
+);
+
 const superRefineParams = new ZodParams(
     {
         stringPropLongerThan10Chars: z.string()
@@ -260,6 +272,14 @@ beforeAll(() => {
                 params: refineParamsUsingObjectAndParams.schema,
                 async handler(
                     ctx: Context<typeof refineParamsUsingObjectAndParams.context>
+                ) {
+                    return ctx.params;
+                }
+            },
+            refineParamsUsingObjectAndStringParams: {
+                params: refineParamsUsingObjectAndStringParams.schema,
+                async handler(
+                    ctx: Context<typeof refineParamsUsingObjectAndStringParams.context>
                 ) {
                     return ctx.params;
                 }
@@ -518,6 +538,19 @@ describe("modifiers", () => {
         });
     });
 
+    test("refine with object and string params", async () => {
+        const data = await broker.call<
+            typeof refineParamsUsingObjectAndStringParams.context,
+            typeof refineParamsUsingObjectAndStringParams.call
+        >("test.refineParamsUsingObjectAndStringParams", {
+            stringPropLongerThan10Chars: "1234567890 is 10 chars"
+        });
+
+        expect(data).toEqual({
+            stringPropLongerThan10Chars: "1234567890 is 10 chars"
+        });
+    });
+
     test("superRefine", async () => {
         const data = await broker.call<
             typeof superRefineParams.context,
@@ -655,6 +688,19 @@ describe("unrecognized parameters", () => {
                 typeof refineParamsUsingObjectAndParams.context,
                 typeof refineParamsUsingObjectAndParams.call
             >("test.refineParamsUsingObjectAndParams", {
+                stringPropLongerThan10Chars: "2small4me"
+            });
+        } catch (err) {
+            expect(err).toBeInstanceOf(Errors.ValidationError);
+        }
+    });
+
+    test("calling refine with object and string params with too small string", async () => {
+        try {
+            await broker.call<
+                typeof refineParamsUsingObjectAndStringParams.context,
+                typeof refineParamsUsingObjectAndStringParams.call
+            >("test.refineParamsUsingObjectAndStringParams", {
                 stringPropLongerThan10Chars: "2small4me"
             });
         } catch (err) {

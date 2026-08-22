@@ -2,6 +2,11 @@
 
 (all dates use the ISO-8601 format, which is YYYY/MM/DD)
 
+## 4.0.3 (2026/8/22)
+
+* Fixed a bug in `params.ts` where the runtime validator schema for `refine` was incorrectly tighter than both the TypeScript types and Zod's refine schema. Previously, it wouldn't accept a bare string despite this being a valid use case. 
+* Added regression tests for that bug
+
 ## 4.0.2 (2026/8/20)
 
 * Fixed a bug in `params.ts` where validation errors were thrown synchronously where Moleculer expected them to throw asynchronously. When used with the bulkhead feature, validation failures would never settle and the bulkhead slots would be permanently filled until the process restarted. That shouldn't happen anymore. 
