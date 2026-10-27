@@ -3,9 +3,10 @@
 {
 	"name": "Ubuntu",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"image": "mcr.microsoft.com/devcontainers/base:noble",
+	"image": "mcr.microsoft.com/devcontainers/base:resolute",
 	"features": {
-		"ghcr.io/devcontainers/features/node:2.1.0": {},
+		"ghcr.io/devcontainers/features/common-utils:2.7.1": {},
+		"ghcr.io/devcontainers/features/node:2.1.1": {},
 		"ghcr.io/devcontainers-extra/features/zsh-plugins:0": {}
 	}
 
